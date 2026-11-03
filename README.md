@@ -9,4 +9,4 @@ From the repository root:
 dotnet run --project Backend/BlueHarvest.PricingExceptions/src/PricingExceptions.API --launch-profile http
 ```
 
-Open http://localhost:5267/swagger in Development. The current implementation contains entity models and enums only; business endpoints and tests will be added incrementally.
+Open http://localhost:5267/swagger in Development. The current implementation contains models, an EF Core InMemory context, and tested workflow services. HTTP endpoints will be added in a later step.

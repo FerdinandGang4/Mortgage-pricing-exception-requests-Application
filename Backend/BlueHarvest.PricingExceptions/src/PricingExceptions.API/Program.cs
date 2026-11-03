@@ -1,10 +1,17 @@
 using Microsoft.EntityFrameworkCore;
 using PricingExceptions.API.Data;
+using PricingExceptions.API.Services;
+using PricingExceptions.API.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<InMemoryWriteLock>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IPricingExceptionService, PricingExceptionService>();
+builder.Services.AddScoped<IApprovedDiscountService, ApprovedDiscountService>();
 builder.Services.AddDbContext<PricingExceptionsDbContext>(options =>
     options.UseInMemoryDatabase("PricingExceptions"));
 
