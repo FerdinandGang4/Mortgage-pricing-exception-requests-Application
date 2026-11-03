@@ -17,6 +17,11 @@ public sealed class PricingExceptionsController(IPricingExceptionService service
 {
     private Guid ActorId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+    [HttpGet]
+    [ProducesResponseType<IReadOnlyList<PricingExceptionResponseDto>>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<PricingExceptionResponseDto>>> List(CancellationToken cancellationToken)
+        => Ok((await service.ListAsync(ActorId, cancellationToken)).Select(PricingExceptionMapper.ToResponse).ToList());
+
     [HttpPost]
     [Authorize(Roles = "RelationshipManager")]
     [ProducesResponseType<PricingExceptionResponseDto>(StatusCodes.Status201Created)]

@@ -22,6 +22,7 @@ async function request<T>(path: string, actor: string, init: RequestInit = {}): 
   return body as T
 }
 export const pricingApi = {
+  list: (actor: string, signal?: AbortSignal) => request<PricingException[]>('/pricing-exceptions', actor, { signal }),
   me: (actor: string, signal?: AbortSignal) => request<UserSummary>('/users/me', actor, { signal }),
   reviewers: (actor: string, signal?: AbortSignal) => request<UserSummary[]>('/users/reviewers', actor, { signal }),
   get: (id: string, actor: string, signal?: AbortSignal) => request<PricingException>('/pricing-exceptions/' + id, actor, { signal }),

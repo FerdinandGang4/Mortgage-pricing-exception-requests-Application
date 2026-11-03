@@ -45,6 +45,7 @@ Open http://localhost:5267/swagger, expand an operation and select Try it out. S
 | Method | Route | Role |
 | --- | --- | --- |
 | POST | /api/v1/pricing-exceptions | RelationshipManager |
+| GET | /api/v1/pricing-exceptions | Known internal user; all current requests |
 | GET | /api/v1/pricing-exceptions/{id} | Known internal user |
 | POST | /api/v1/pricing-exceptions/{id}/revisions | Owning RelationshipManager |
 | POST | /api/v1/pricing-exceptions/{id}/decisions | Reviewer |
@@ -111,7 +112,7 @@ sequenceDiagram
 dotnet test BlueHarvest.PricingExceptions.slnx
 ```
 
-The automated suite contains 21 service cases and 14 HTTP integration cases. It covers approval, decline, revision and reapproval, preserved history, rejected historical edits/deletes, concurrent retries, decision-versus-revision conflicts, exact HTTP retry responses, validation, status codes, identity and role checks, Swagger, and disabled demo authentication outside Development. Each test host receives an isolated InMemory store. Tests do not validate relational guarantees.
+The automated suite contains 21 service cases and 15 HTTP integration cases. It covers approval, decline, revision and reapproval, preserved history, rejected historical edits/deletes, concurrent retries, decision-versus-revision conflicts, exact HTTP retry responses, validation, status codes, identity and role checks, Swagger, and disabled demo authentication outside Development. Each test host receives an isolated InMemory store. Tests do not validate relational guarantees.
 
 The GitHub Actions workflow restores, builds and tests the backend with .NET 10. It has been added to the repository; successful remote execution must be verified after pushing.
 

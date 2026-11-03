@@ -5,6 +5,7 @@ import { pricingApi } from './api/pricingExceptions'
 import { useRequestWorkspace } from './hooks/useRequestWorkspace'
 import { Sidebar } from './components/Sidebar'
 import { Header } from './components/Header'
+import { Footer } from './components/Footer'
 import { StatCards } from './components/StatCards'
 import { RequestTable } from './components/RequestTable'
 import { RequestDetails } from './components/RequestDetails'
@@ -15,6 +16,7 @@ import { ApprovedDiscountLookup } from './components/ApprovedDiscountLookup'
 import { ErrorMessage } from './components/Feedback'
 import { Icon } from './components/Icon'
 import './App.css'
+import './chrome.css'
 
 type Dialog = { kind: 'create' | 'open' } | { kind: 'revise' | 'review'; request: PricingException } | null
 function App() {
@@ -54,7 +56,7 @@ function App() {
           <div className={view === 'requests' ? 'workspace-grid' : 'history-layout'}>{view === 'requests' && <RequestTable requests={workspace.requests} selectedId={selectedId} loading={workspace.loading} onSelect={r => setSelectedId(r.id)} onOpen={() => setDialog({ kind: 'open' })}/>}<RequestDetails request={selected} persona={persona} onRevise={request => setDialog({ kind: 'revise', request })} onReview={request => setDialog({ kind: 'review', request })} onCopy={id => void copy(id)} historyOnly={view === 'activity'}/></div>
           <div className="workspace-note"><Icon name="shield" size={17}/><p>Changes create a new revision. An approval always belongs to the terms that were reviewed.</p><span>CONTROLLED BY DESIGN</span></div>
         </>}
-        <footer className="main-footer"><span>© {year} Blue Harvest <span className="footer-dot">·</span> Mortgage operations</span><span>Internal use <span className="footer-dot">·</span> Demo environment</span></footer>
+        <Footer year={year}/>
       </main>
     </div>
     {dialog?.kind === 'create' && <RequestFormDialog persona={persona} onClose={() => setDialog(null)} onSuccess={success}/>}

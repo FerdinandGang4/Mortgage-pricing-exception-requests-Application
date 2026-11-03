@@ -10,6 +10,36 @@ public sealed class HttpWorkflowTests
 {
 
     [Fact]
+    public async Task RequestListReturnsAllCurrentRequestsForKnownInternalUsers()
+    {
+        await using var factory = CreateFactory();
+        using var manager = Client(factory, Manager);
+        using var reviewer = Client(factory, Reviewer);
+        using var anonymous = Client(factory);
+        var empty = await manager.GetFromJsonAsync<JsonElement>("/api/v1/pricing-exceptions");
+        Assert.Equal(0, empty.GetArrayLength());
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("/api/v1/pricing-exceptions")).StatusCode);
+        var first = await Post(manager, "/api/v1/pricing-exceptions",
+            new { reviewerId = Reviewer, mortgageApplicationId = Guid.NewGuid(), discountBps = 50, reason = "First offer" }, "first");
+        var firstId = (await Json(first)).GetProperty("id").GetGuid();
+        await Post(manager, "/api/v1/pricing-exceptions",
+            new { reviewerId = Reviewer, mortgageApplicationId = Guid.NewGuid(), discountBps = 30, reason = "Second offer" }, "second");
+        await Post(reviewer, $"/api/v1/pricing-exceptions/{firstId}/decisions",
+            new { outcome = "Approved", expectedVersion = 1, reviewedRevisionNumber = 1 }, "approve");
+        await Post(manager, $"/api/v1/pricing-exceptions/{firstId}/revisions",
+            new { discountBps = 75, reason = "Updated offer", expectedVersion = 2, expectedRevisionNumber = 1 }, "revise");
+        var listed = await reviewer.GetFromJsonAsync<JsonElement>("/api/v1/pricing-exceptions");
+        Assert.Equal(2, listed.GetArrayLength());
+        var current = listed.EnumerateArray().Single(item => item.GetProperty("id").GetGuid() == firstId);
+        Assert.Equal(75, current.GetProperty("discountBps").GetInt32());
+        Assert.Equal(2, current.GetProperty("revisionNumber").GetInt32());
+        Assert.Equal("Pending", current.GetProperty("status").GetString());
+        Assert.Equal("Demo Manager", current.GetProperty("requesterName").GetString());
+        Assert.Equal("Demo Reviewer", current.GetProperty("assignedReviewerName").GetString());
+        Assert.Equal(JsonValueKind.Null, current.GetProperty("reviewerId").ValueKind);
+    }
+
+    [Fact]
     public async Task IdentityAndReviewerSelectionAreCapturedAndCannotBeSpoofed()
     {
         await using var factory = CreateFactory();

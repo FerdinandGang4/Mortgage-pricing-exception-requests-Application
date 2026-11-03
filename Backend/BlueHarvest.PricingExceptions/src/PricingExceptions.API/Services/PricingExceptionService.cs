@@ -16,6 +16,32 @@ public sealed class PricingExceptionService(
     PricingExceptionsDbContext database, IUserService users,
     InMemoryWriteLock writeLock, TimeProvider clock) : IPricingExceptionService
 {
+    public async Task<IReadOnlyList<PricingExceptionResult>> ListAsync(Guid actorId, CancellationToken cancellationToken = default)
+    {
+        await users.GetRequiredAsync(actorId, cancellationToken);
+        await writeLock.Semaphore.WaitAsync(cancellationToken);
+        try
+        {
+            var requests = await database.PricingExceptionRequests.AsNoTracking()
+                .OrderByDescending(request => request.CreatedAtUtc).ThenBy(request => request.Id)
+                .ToListAsync(cancellationToken);
+            var revisions = (await database.RequestRevisions.AsNoTracking().ToListAsync(cancellationToken))
+                .ToDictionary(revision => (revision.RequestId, revision.RevisionNumber));
+            var decisions = (await database.ReviewDecisions.AsNoTracking().ToListAsync(cancellationToken))
+                .ToDictionary(decision => (decision.RequestId, decision.RevisionNumber));
+            return requests.Select(request =>
+            {
+                var key = (request.Id, request.CurrentRevisionNumber);
+                decisions.TryGetValue(key, out var decision);
+                return Result(request, revisions[key], decision);
+            }).ToList();
+        }
+        finally
+        {
+            writeLock.Semaphore.Release();
+        }
+    }
+
     public async Task<PricingExceptionResult> CreateAsync(Guid applicationId, int discountBasisPoints,
         string reason, Guid reviewerId, Guid actorId, string idempotencyKey, CancellationToken cancellationToken = default)
     {

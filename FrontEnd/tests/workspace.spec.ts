@@ -1,5 +1,41 @@
 import { test, expect } from '@playwright/test'
 
+test('open request dropdown includes backend requests outside the browser workspace', async ({ page }) => {
+  await page.goto('/')
+  const applicationId = crypto.randomUUID()
+  const createdResponse = await page.request.post('/api/v1/pricing-exceptions', {
+    headers: { 'X-User-Id': '11111111-1111-1111-1111-111111111111', 'Idempotency-Key': crypto.randomUUID() },
+    data: { mortgageApplicationId: applicationId, discountBps: 42, reason: 'Created outside this browser workspace.', reviewerId: '22222222-2222-2222-2222-222222222222' },
+  })
+  expect(createdResponse.status()).toBe(201)
+  const created = await createdResponse.json()
+  await expect(page.locator('tbody tr')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Open request', exact: true }).click()
+  await expect(page.getByLabel('Existing request', { exact: true })).toBeEnabled()
+  const openButton = page.getByRole('dialog').getByRole('button', { name: 'Open request', exact: true })
+  await expect(openButton).toBeDisabled()
+  await page.getByLabel('Existing request', { exact: true }).selectOption(created.id)
+  await expect(page.getByRole('dialog')).toContainText(applicationId)
+  await expect(page.getByRole('dialog')).toContainText('Created outside this browser workspace.')
+  await page.screenshot({ path: 'test-results/open-request-dropdown.png', fullPage: true })
+  await openButton.click()
+  await expect(page.getByRole('dialog')).not.toBeVisible()
+  await expect(page.locator('tbody tr')).toHaveCount(1)
+  await expect(page.locator('.detail-fields')).toContainText(applicationId)
+})
+
+test('request dropdown explains an empty directory and prevents opening', async ({ page }) => {
+  await page.route('**/api/v1/pricing-exceptions', async route => {
+    if (route.request().method() === 'GET') await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
+    else await route.continue()
+  })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Open request', exact: true }).click()
+  await expect(page.getByLabel('Existing request', { exact: true })).toBeDisabled()
+  await expect(page.getByRole('dialog')).toContainText('Create a pricing exception first')
+  await expect(page.getByRole('dialog').getByRole('button', { name: 'Open request', exact: true })).toBeDisabled()
+})
+
 test('requester is automatic and the selected reviewer is retained in details and decision history', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'New request', exact: true }).click()
@@ -213,10 +249,15 @@ test('manager, reviewer and mortgage process complete an exception workflow', as
 
 test('request lookup errors, role restrictions, filtering and mobile navigation', async ({ page }) => {
   await page.goto('/')
+  await page.route('**/api/v1/pricing-exceptions', async route => {
+    if (route.request().method() === 'GET') await route.fulfill({ status: 503, contentType: 'application/problem+json', body: JSON.stringify({ detail: 'Request directory unavailable.' }) })
+    else await route.continue()
+  })
   await page.getByRole('button', { name: 'Open request', exact: true }).click()
-  await page.getByLabel('Request ID', { exact: true }).fill(crypto.randomUUID())
-  await page.getByRole('dialog').getByRole('button', { name: 'Open request', exact: true }).click()
-  await expect(page.getByRole('alert')).toContainText('not found')
+  await expect(page.getByRole('alert')).toContainText('Request directory unavailable.')
+  await page.unroute('**/api/v1/pricing-exceptions')
+  await page.getByRole('button', { name: 'Retry loading requests' }).click()
+  await expect(page.getByLabel('Existing request', { exact: true })).toBeEnabled()
   await page.getByRole('button', { name: 'Close dialog' }).click()
   await page.getByLabel('Demo role').selectOption('22222222-2222-2222-2222-222222222222')
   await expect(page.getByRole('button', { name: 'New request', exact: true })).toHaveCount(0)
