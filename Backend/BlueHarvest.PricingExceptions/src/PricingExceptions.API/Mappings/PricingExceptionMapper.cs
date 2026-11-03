@@ -8,5 +8,6 @@ public static class PricingExceptionMapper
     public static PricingExceptionResponseDto ToResponse(PricingExceptionResult result)
         => new(result.Id, result.MortgageApplicationId, result.CreatedByUserId, result.Status,
             result.RevisionNumber, result.Version, result.DiscountBasisPoints, result.Reason,
-            result.ReviewerId, result.DecidedAtUtc);
+            result.ReviewerId, result.DecidedAtUtc, result.CreatedByUserId, result.RequesterName,
+            result.AssignedReviewerId, result.AssignedReviewerName, result.ReviewerName);
 }

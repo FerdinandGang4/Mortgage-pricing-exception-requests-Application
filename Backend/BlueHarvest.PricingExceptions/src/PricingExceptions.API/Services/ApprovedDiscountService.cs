@@ -29,7 +29,7 @@ public sealed class ApprovedDiscountService(PricingExceptionsDbContext database,
                 where request.MortgageApplicationId == applicationId
                     && request.Status == RequestStatus.Approved && decision.Outcome == DecisionOutcome.Approved
                 select new ApprovedDiscountResult(request.Id, applicationId, revision.DiscountBasisPoints,
-                    revision.RevisionNumber, decision.ReviewedByUserId, decision.DecidedAtUtc)
+                    revision.RevisionNumber, decision.ReviewedByUserId, decision.DecidedAtUtc, decision.ReviewerName)
             ).SingleOrDefaultAsync(cancellationToken);
         }
         finally

@@ -10,6 +10,7 @@ public sealed class ReviewDecision
     public DecisionOutcome Outcome { get; init; }
     public string? ReviewReason { get; init; }
     public Guid ReviewedByUserId { get; init; }
+    public required string ReviewerName { get; init; }
     public DateTimeOffset DecidedAtUtc { get; init; }
 }
 

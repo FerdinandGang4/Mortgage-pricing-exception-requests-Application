@@ -6,11 +6,12 @@ namespace PricingExceptions.API.Services.Models;
 public sealed record PricingExceptionResult(
     Guid Id, Guid MortgageApplicationId, Guid CreatedByUserId,
     RequestStatus Status, int RevisionNumber, long Version,
-    int DiscountBasisPoints, string Reason, Guid? ReviewerId, DateTimeOffset? DecidedAtUtc);
+    int DiscountBasisPoints, string Reason, Guid? ReviewerId, DateTimeOffset? DecidedAtUtc,
+    string RequesterName, Guid AssignedReviewerId, string AssignedReviewerName, string? ReviewerName);
 
 public sealed record ApprovedDiscountResult(
     Guid RequestId, Guid MortgageApplicationId, int DiscountBasisPoints,
-    int RevisionNumber, Guid ReviewerId, DateTimeOffset DecidedAtUtc);
+    int RevisionNumber, Guid ReviewerId, DateTimeOffset DecidedAtUtc, string ReviewerName);
 
 public sealed record RequestHistoryResult(
     IReadOnlyList<HistoryEntry> Events,

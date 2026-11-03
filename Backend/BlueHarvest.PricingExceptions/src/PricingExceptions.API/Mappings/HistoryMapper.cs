@@ -21,5 +21,5 @@ public static class HistoryMapper
 
     private static DecisionResponseDto ToDecision(ReviewDecision decision)
         => new(decision.RevisionNumber, decision.Outcome, decision.ReviewReason,
-            decision.ReviewedByUserId, decision.DecidedAtUtc);
+            decision.ReviewedByUserId, decision.DecidedAtUtc, decision.ReviewerName);
 }

@@ -9,6 +9,14 @@ namespace PricingExceptions.API.Services;
 
 public sealed class UserService(PricingExceptionsDbContext database) : IUserService
 {
+    public async Task<IReadOnlyList<User>> GetReviewersAsync(Guid actorId, CancellationToken cancellationToken = default)
+    {
+        await RequireRoleAsync(actorId, UserRole.RelationshipManager, cancellationToken);
+        return await database.Users.AsNoTracking()
+            .Where(user => user.Role == UserRole.Reviewer && user.Id != actorId)
+            .OrderBy(user => user.DisplayName).ToListAsync(cancellationToken);
+    }
+
     public async Task<User> GetRequiredAsync(Guid actorId, CancellationToken cancellationToken = default)
     {
         var user = await database.Users.AsNoTracking().SingleOrDefaultAsync(x => x.Id == actorId, cancellationToken);

@@ -17,15 +17,18 @@ public sealed class PricingExceptionService(
     InMemoryWriteLock writeLock, TimeProvider clock) : IPricingExceptionService
 {
     public async Task<PricingExceptionResult> CreateAsync(Guid applicationId, int discountBasisPoints,
-        string reason, Guid actorId, string idempotencyKey, CancellationToken cancellationToken = default)
+        string reason, Guid reviewerId, Guid actorId, string idempotencyKey, CancellationToken cancellationToken = default)
     {
-        await users.RequireRoleAsync(actorId, UserRole.RelationshipManager, cancellationToken);
+        var requester = await users.RequireRoleAsync(actorId, UserRole.RelationshipManager, cancellationToken);
         return await ExecuteWriteAsync(actorId, "create", idempotencyKey,
-            new { applicationId, discountBasisPoints, reason }, async () =>
+            new { applicationId, discountBasisPoints, reason, reviewerId }, async () =>
         {
             ValidateTerms(discountBasisPoints, reason);
             if (applicationId == Guid.Empty)
                 throw new BusinessRuleException("A mortgage application identifier is required.");
+            var reviewer = await database.Users.AsNoTracking().SingleOrDefaultAsync(
+                user => user.Id == reviewerId && user.Role == UserRole.Reviewer && user.Id != actorId, cancellationToken)
+                ?? throw new BusinessRuleException("Select an eligible independent reviewer.");
             // Demo policy: one request per application; changed terms use revisions.
             if (await database.PricingExceptionRequests.AnyAsync(x => x.MortgageApplicationId == applicationId, cancellationToken))
                 throw new ConflictException("This mortgage application already has an exception request.");
@@ -35,6 +38,9 @@ public sealed class PricingExceptionService(
                 Id = Guid.NewGuid(),
                 MortgageApplicationId = applicationId,
                 CreatedByUserId = actorId,
+                RequesterName = requester.DisplayName,
+                AssignedReviewerId = reviewer.Id,
+                AssignedReviewerName = reviewer.DisplayName,
                 CreatedAtUtc = now,
                 UpdatedAtUtc = now
             };
@@ -90,7 +96,7 @@ public sealed class PricingExceptionService(
         string? reason, long expectedVersion, int reviewedRevisionNumber, Guid actorId,
         string idempotencyKey, CancellationToken cancellationToken = default)
     {
-        await users.RequireRoleAsync(actorId, UserRole.Reviewer, cancellationToken);
+        var reviewer = await users.RequireRoleAsync(actorId, UserRole.Reviewer, cancellationToken);
         return await ExecuteWriteAsync(actorId, $"review:{requestId}", idempotencyKey,
             new { outcome, reason, expectedVersion, reviewedRevisionNumber }, async () =>
         {
@@ -99,6 +105,8 @@ public sealed class PricingExceptionService(
             var request = await FindAsync(requestId, cancellationToken);
             if (request.CreatedByUserId == actorId)
                 throw new ForbiddenException("Self-review is not allowed.");
+            if (request.AssignedReviewerId != actorId)
+                throw new ForbiddenException("Only the selected reviewer may decide this request.");
             CheckVersion(request, expectedVersion, reviewedRevisionNumber);
             if (request.Status != RequestStatus.Pending ||
                 await database.ReviewDecisions.AnyAsync(x => x.RequestId == requestId && x.RevisionNumber == reviewedRevisionNumber, cancellationToken))
@@ -114,6 +122,7 @@ public sealed class PricingExceptionService(
                 Outcome = outcome,
                 ReviewReason = reason?.Trim(),
                 ReviewedByUserId = actorId,
+                ReviewerName = reviewer.DisplayName,
                 DecidedAtUtc = now
             };
             database.ReviewDecisions.Add(decision);
@@ -278,5 +287,6 @@ public sealed class PricingExceptionService(
     private static PricingExceptionResult Result(PricingExceptionRequest request, RequestRevision revision, ReviewDecision? decision = null)
         => new(request.Id, request.MortgageApplicationId, request.CreatedByUserId, request.Status,
             revision.RevisionNumber, request.Version, revision.DiscountBasisPoints, revision.Reason,
-            decision?.ReviewedByUserId, decision?.DecidedAtUtc);
+            decision?.ReviewedByUserId, decision?.DecidedAtUtc,
+            request.RequesterName, request.AssignedReviewerId, request.AssignedReviewerName, decision?.ReviewerName);
 }

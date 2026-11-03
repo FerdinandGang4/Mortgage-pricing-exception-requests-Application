@@ -28,7 +28,7 @@ public sealed class PricingExceptionsController(IPricingExceptionService service
         CancellationToken cancellationToken)
     {
         var result = await service.CreateAsync(request.MortgageApplicationId, request.DiscountBps,
-            request.Reason, ActorId, idempotencyKey, cancellationToken);
+            request.Reason, request.ReviewerId!.Value, ActorId, idempotencyKey, cancellationToken);
         return CreatedAtAction(nameof(Get), new { id = result.Id }, PricingExceptionMapper.ToResponse(result));
     }
 

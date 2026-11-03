@@ -14,4 +14,5 @@ public sealed record RevisionResponseDto(
     int RevisionNumber, int DiscountBps, string Reason, Guid SubmittedByUserId, DateTimeOffset SubmittedAtUtc);
 
 public sealed record DecisionResponseDto(
-    int RevisionNumber, DecisionOutcome Outcome, string? Reason, Guid ReviewerId, DateTimeOffset DecidedAtUtc);
+    int RevisionNumber, DecisionOutcome Outcome, string? Reason, Guid ReviewerId, DateTimeOffset DecidedAtUtc,
+    string ReviewerName);

@@ -18,6 +18,7 @@ import './App.css'
 
 type Dialog = { kind: 'create' | 'open' } | { kind: 'revise' | 'review'; request: PricingException } | null
 function App() {
+  const [year] = useState(() => new Date().getFullYear())
   const [persona, setPersona] = useState<Persona>(personas[0])
   const [view, setView] = useState<View>('requests')
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -53,7 +54,7 @@ function App() {
           <div className={view === 'requests' ? 'workspace-grid' : 'history-layout'}>{view === 'requests' && <RequestTable requests={workspace.requests} selectedId={selectedId} loading={workspace.loading} onSelect={r => setSelectedId(r.id)} onOpen={() => setDialog({ kind: 'open' })}/>}<RequestDetails request={selected} persona={persona} onRevise={request => setDialog({ kind: 'revise', request })} onReview={request => setDialog({ kind: 'review', request })} onCopy={id => void copy(id)} historyOnly={view === 'activity'}/></div>
           <div className="workspace-note"><Icon name="shield" size={17}/><p>Changes create a new revision. An approval always belongs to the terms that were reviewed.</p><span>CONTROLLED BY DESIGN</span></div>
         </>}
-        <footer className="main-footer"><span>© {new Date().getFullYear()} Blue Harvest <span className="footer-dot">·</span> Mortgage operations</span><span>Internal use <span className="footer-dot">·</span> Demo environment</span></footer>
+        <footer className="main-footer"><span>© {year} Blue Harvest <span className="footer-dot">·</span> Mortgage operations</span><span>Internal use <span className="footer-dot">·</span> Demo environment</span></footer>
       </main>
     </div>
     {dialog?.kind === 'create' && <RequestFormDialog persona={persona} onClose={() => setDialog(null)} onSuccess={success}/>}

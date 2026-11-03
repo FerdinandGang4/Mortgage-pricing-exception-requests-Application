@@ -29,6 +29,8 @@ On other platforms use npm instead of npm.cmd.
 
 ## Components and workflow
 
+New requests automatically show the requester profile from the authenticated backend identity. Select an assigned reviewer from the API-backed dropdown. Request details display requester and assigned-reviewer IDs and names, while completed decisions also show the acting reviewer name/ID and decision time. Assignment is preserved when revising; only the selected reviewer can decide.
+
 - Sidebar and Header: responsive navigation, backend connectivity and demo persona selection.
 - StatCards: counts for requests opened in this browser workspace.
 - RequestTable: search by request/application ID or reason, filter by status, select request details.
@@ -55,6 +57,8 @@ POST commands generate idempotency keys and reuse the key when retrying unchange
 The connection indicator reports whether the Development OpenAPI endpoint responds. Refresh reloads workspace requests. No fake requests or precomputed portfolio metrics are displayed.
 
 ## Checks
+
+See [TESTING.md](TESTING.md) for the combined frontend/backend validation results. The browser suite contains nine scenarios, including lost-response retry, stale decisions, validation, workspace reload, and responsive navigation.
 
 ```powershell
 npm.cmd run build

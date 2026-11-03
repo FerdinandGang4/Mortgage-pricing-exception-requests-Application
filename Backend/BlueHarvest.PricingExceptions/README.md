@@ -30,6 +30,10 @@ Controllers obtain actor IDs from authenticated claims. Development authenticati
 
 ## Test in Swagger
 
+Creation captures the requester ID (the existing CreatedByUserId, also exposed as requesterId) and a requester-name snapshot from the authenticated user. Supply reviewerId from GET /api/v1/users/reviewers; the service stores the selected reviewer's ID and name. GET /api/v1/users/me returns the signed-in user's profile. The frontend uses these endpoints to show the read-only requester and reviewer dropdown.
+
+Only the selected reviewer may approve or decline. Assignment remains unchanged across revisions. Responses distinguish assignedReviewerId/assignedReviewerName from reviewerId/reviewerName for the actual decision. Decision names and UTC timestamps are retained in history even if user display names later change.
+
 Open http://localhost:5267/swagger, expand an operation and select Try it out. Supply X-User-Id using the appropriate seeded identity:
 
 | Role | X-User-Id |
@@ -53,7 +57,8 @@ Open http://localhost:5267/swagger, expand an operation and select Try it out. S
 {
   "mortgageApplicationId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
   "discountBps": 50,
-  "reason": "Competitive rate offer"
+  "reason": "Competitive rate offer",
+  "reviewerId": "22222222-2222-2222-2222-222222222222"
 }
 ```
 
@@ -106,7 +111,7 @@ sequenceDiagram
 dotnet test BlueHarvest.PricingExceptions.slnx
 ```
 
-The automated suite contains 18 service cases and 9 HTTP integration cases. It covers approval, decline, revision and reapproval, preserved history, rejected historical edits/deletes, concurrent retries, decision-versus-revision conflicts, exact HTTP retry responses, validation, status codes, identity and role checks, Swagger, and disabled demo authentication outside Development. Each test host receives an isolated InMemory store. Tests do not validate relational guarantees.
+The automated suite contains 21 service cases and 14 HTTP integration cases. It covers approval, decline, revision and reapproval, preserved history, rejected historical edits/deletes, concurrent retries, decision-versus-revision conflicts, exact HTTP retry responses, validation, status codes, identity and role checks, Swagger, and disabled demo authentication outside Development. Each test host receives an isolated InMemory store. Tests do not validate relational guarantees.
 
 The GitHub Actions workflow restores, builds and tests the backend with .NET 10. It has been added to the repository; successful remote execution must be verified after pushing.
 

@@ -8,6 +8,54 @@ namespace PricingExceptions.IntegrationTests;
 
 public sealed class HttpWorkflowTests
 {
+
+    [Fact]
+    public async Task IdentityAndReviewerSelectionAreCapturedAndCannotBeSpoofed()
+    {
+        await using var factory = CreateFactory();
+        using var manager = Client(factory, Manager);
+        using var reviewer = Client(factory, Reviewer);
+        var me = await manager.GetFromJsonAsync<JsonElement>("/api/v1/users/me");
+        Assert.Equal(Manager, me.GetProperty("id").GetString());
+        Assert.Equal("Demo Manager", me.GetProperty("displayName").GetString());
+        var reviewers = await manager.GetFromJsonAsync<JsonElement>("/api/v1/users/reviewers");
+        Assert.Equal(Reviewer, reviewers[0].GetProperty("id").GetString());
+        Assert.Equal("Demo Reviewer", reviewers[0].GetProperty("displayName").GetString());
+        Assert.All(reviewers.EnumerateArray(), user => Assert.Equal("Reviewer", user.GetProperty("role").GetString()));
+        Assert.Equal(HttpStatusCode.Forbidden, (await reviewer.GetAsync("/api/v1/users/reviewers")).StatusCode);
+        var created = await Post(manager, "/api/v1/pricing-exceptions", new
+        {
+            mortgageApplicationId = Guid.NewGuid(), discountBps = 50, reason = "Offer", reviewerId = Reviewer,
+            requesterId = Reviewer, requesterName = "Spoofed requester", assignedReviewerName = "Spoofed reviewer",
+        }, "identity");
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var result = await Json(created);
+        Assert.Equal(Manager, result.GetProperty("requesterId").GetString());
+        Assert.Equal("Demo Manager", result.GetProperty("requesterName").GetString());
+        Assert.Equal(Reviewer, result.GetProperty("assignedReviewerId").GetString());
+        Assert.Equal("Demo Reviewer", result.GetProperty("assignedReviewerName").GetString());
+        var id = result.GetProperty("id").GetGuid();
+        var decision = await Post(reviewer, $"/api/v1/pricing-exceptions/{id}/decisions",
+            new { outcome = "Approved", expectedVersion = 1, reviewedRevisionNumber = 1, reviewerName = "Spoofed name" }, "decision");
+        Assert.Equal("Demo Reviewer", (await Json(decision)).GetProperty("reviewerName").GetString());
+        var history = await manager.GetFromJsonAsync<JsonElement>($"/api/v1/pricing-exceptions/{id}/history");
+        Assert.Equal("Demo Reviewer", history.GetProperty("decisions")[0].GetProperty("reviewerName").GetString());
+        Assert.False(string.IsNullOrWhiteSpace(history.GetProperty("decisions")[0].GetProperty("decidedAtUtc").GetString()));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("00000000-0000-0000-0000-000000000000")]
+    [InlineData("33333333-3333-3333-3333-333333333333")]
+    [InlineData("99999999-9999-9999-9999-999999999999")]
+    public async Task MissingOrInvalidReviewerReturns400(string? reviewerId)
+    {
+        await using var factory = CreateFactory();
+        using var manager = Client(factory, Manager);
+        var response = await Post(manager, "/api/v1/pricing-exceptions",
+            new { mortgageApplicationId = Guid.NewGuid(), discountBps = 50, reason = "Offer", reviewerId }, "invalid-reviewer");
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
     private const string Manager = "11111111-1111-1111-1111-111111111111";
     private const string Reviewer = "22222222-2222-2222-2222-222222222222";
     private const string MortgageProcess = "33333333-3333-3333-3333-333333333333";
@@ -47,7 +95,7 @@ public sealed class HttpWorkflowTests
         using var reviewer = Client(factory, Reviewer);
         using var process = Client(factory, MortgageProcess);
         var applicationId = Guid.NewGuid();
-        var payload = new { mortgageApplicationId = applicationId, discountBps = 50, reason = "Competitive offer" };
+        var payload = new { reviewerId = Reviewer, mortgageApplicationId = applicationId, discountBps = 50, reason = "Competitive offer" };
         var created = await Post(manager, "/api/v1/pricing-exceptions", payload, "create");
         Assert.Equal(HttpStatusCode.Created, created.StatusCode);
         var snapshot = await Json(created);
@@ -91,11 +139,11 @@ public sealed class HttpWorkflowTests
         using var process = Client(factory, MortgageProcess);
         var applicationId = Guid.NewGuid();
         var created = await Post(manager, "/api/v1/pricing-exceptions",
-            new { mortgageApplicationId = applicationId, discountBps = 50, reason = "Offer" }, "create");
+            new { reviewerId = Reviewer, mortgageApplicationId = applicationId, discountBps = 50, reason = "Offer" }, "create");
         var id = (await Json(created)).GetProperty("id").GetGuid();
         var route = $"/api/v1/pricing-exceptions/{id}";
         var conflict = await Post(manager, "/api/v1/pricing-exceptions",
-            new { mortgageApplicationId = applicationId, discountBps = 60, reason = "Offer" }, "create");
+            new { reviewerId = Reviewer, mortgageApplicationId = applicationId, discountBps = 60, reason = "Offer" }, "create");
         Assert.Equal(HttpStatusCode.Conflict, conflict.StatusCode);
         var declined = await Post(reviewer, route + "/decisions",
             new { outcome = "Declined", reason = "Not eligible", expectedVersion = 1, reviewedRevisionNumber = 1 }, "decline");
@@ -125,7 +173,7 @@ public sealed class HttpWorkflowTests
         using var manager = Client(factory, Manager);
         using var reviewer = Client(factory, Reviewer);
         var forbidden = await Post(reviewer, "/api/v1/pricing-exceptions",
-            new { mortgageApplicationId = Guid.NewGuid(), discountBps = 50, reason = "Offer" }, "create");
+            new { reviewerId = Reviewer, mortgageApplicationId = Guid.NewGuid(), discountBps = 50, reason = "Offer" }, "create");
         Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
         var missing = await manager.GetAsync($"/api/v1/pricing-exceptions/{Guid.NewGuid()}");
         Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
@@ -139,13 +187,13 @@ public sealed class HttpWorkflowTests
         using var manager = Client(factory, Manager);
         using var reviewer = Client(factory, Reviewer);
         var badTerms = await Post(manager, "/api/v1/pricing-exceptions",
-            new { mortgageApplicationId = Guid.NewGuid(), discountBps = 0, reason = "" }, "invalid");
+            new { reviewerId = Reviewer, mortgageApplicationId = Guid.NewGuid(), discountBps = 0, reason = "" }, "invalid");
         Assert.Equal(HttpStatusCode.BadRequest, badTerms.StatusCode);
         var missingKey = await manager.PostAsJsonAsync("/api/v1/pricing-exceptions",
-            new { mortgageApplicationId = Guid.NewGuid(), discountBps = 50, reason = "Offer" });
+            new { reviewerId = Reviewer, mortgageApplicationId = Guid.NewGuid(), discountBps = 50, reason = "Offer" });
         Assert.Equal(HttpStatusCode.BadRequest, missingKey.StatusCode);
         var badApplication = await Post(manager, "/api/v1/pricing-exceptions",
-            new { mortgageApplicationId = Guid.Empty, discountBps = 50, reason = "Offer" }, "empty-app");
+            new { reviewerId = Reviewer, mortgageApplicationId = Guid.Empty, discountBps = 50, reason = "Offer" }, "empty-app");
         Assert.Equal(HttpStatusCode.BadRequest, badApplication.StatusCode);
         var missingOutcome = await Post(reviewer, $"/api/v1/pricing-exceptions/{Guid.NewGuid()}/decisions",
             new { expectedVersion = 1, reviewedRevisionNumber = 1 }, "outcome");

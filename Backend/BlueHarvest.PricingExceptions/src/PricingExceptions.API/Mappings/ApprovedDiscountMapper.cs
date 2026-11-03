@@ -7,5 +7,5 @@ public static class ApprovedDiscountMapper
 {
     public static ApprovedDiscountResponseDto ToResponse(ApprovedDiscountResult result)
         => new(result.RequestId, result.MortgageApplicationId, result.DiscountBasisPoints,
-            result.RevisionNumber, result.ReviewerId, result.DecidedAtUtc);
+            result.RevisionNumber, result.ReviewerId, result.DecidedAtUtc, result.ReviewerName);
 }

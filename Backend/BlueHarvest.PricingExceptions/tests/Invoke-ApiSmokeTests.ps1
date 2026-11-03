@@ -20,13 +20,13 @@ function Assert-Status([string]$Path, [hashtable]$Headers, [int]$Expected, [stri
 }
 
 $application = [guid]::NewGuid().ToString()
-$body = @{mortgageApplicationId=$application; discountBps=50; reason='HTTP smoke test'} | ConvertTo-Json
+$body = @{reviewerId='22222222-2222-2222-2222-222222222222';mortgageApplicationId=$application; discountBps=50; reason='HTTP smoke test'} | ConvertTo-Json
 $created = Invoke-WebRequest "$BaseUrl/api/v1/pricing-exceptions" -Method Post -Headers $manager -Body $body -ContentType 'application/json' -UseBasicParsing
 if ($created.StatusCode -ne 201 -or -not $created.Headers.Location) { throw 'Creation response is invalid' }
 $request = $created.Content | ConvertFrom-Json
 $replay = Invoke-RestMethod "$BaseUrl/api/v1/pricing-exceptions" -Method Post -Headers $manager -Body $body -ContentType 'application/json'
 if ($replay.id -ne $request.id) { throw 'Retry created a duplicate' }
-$changedBody = @{mortgageApplicationId=$application; discountBps=60; reason='Changed'} | ConvertTo-Json
+$changedBody = @{reviewerId='22222222-2222-2222-2222-222222222222';mortgageApplicationId=$application; discountBps=60; reason='Changed'} | ConvertTo-Json
 Assert-Status '/api/v1/pricing-exceptions' $manager 409 'Post' $changedBody
 
 $decision = @{outcome='Approved'; expectedVersion=1; reviewedRevisionNumber=1; reason='Accepted'} | ConvertTo-Json

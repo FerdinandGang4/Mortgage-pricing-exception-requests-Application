@@ -45,6 +45,9 @@ public sealed class PricingExceptionsDbContext(
         {
             request.Property(x => x.Version).IsConcurrencyToken();
             request.HasOne<User>().WithMany().HasForeignKey(x => x.CreatedByUserId);
+            request.HasOne<User>().WithMany().HasForeignKey(x => x.AssignedReviewerId);
+            request.Property(x => x.RequesterName).HasMaxLength(200);
+            request.Property(x => x.AssignedReviewerName).HasMaxLength(200);
             request.HasMany(x => x.Revisions).WithOne().HasForeignKey(x => x.RequestId);
             request.HasMany(x => x.History).WithOne().HasForeignKey(x => x.RequestId);
         });

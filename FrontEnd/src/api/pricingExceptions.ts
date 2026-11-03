@@ -1,4 +1,4 @@
-import type { ApprovedDiscount, PricingException, RequestHistory } from '../types'
+import type { ApprovedDiscount, PricingException, RequestHistory, UserSummary } from '../types'
 
 export class ApiError extends Error {
   readonly status: number
@@ -22,9 +22,11 @@ async function request<T>(path: string, actor: string, init: RequestInit = {}): 
   return body as T
 }
 export const pricingApi = {
+  me: (actor: string, signal?: AbortSignal) => request<UserSummary>('/users/me', actor, { signal }),
+  reviewers: (actor: string, signal?: AbortSignal) => request<UserSummary[]>('/users/reviewers', actor, { signal }),
   get: (id: string, actor: string, signal?: AbortSignal) => request<PricingException>('/pricing-exceptions/' + id, actor, { signal }),
   history: (id: string, actor: string, signal?: AbortSignal) => request<RequestHistory>('/pricing-exceptions/' + id + '/history', actor, { signal }),
-  create: (body: { mortgageApplicationId: string; discountBps: number; reason: string }, actor: string, key: string) =>
+  create: (body: { mortgageApplicationId: string; discountBps: number; reason: string; reviewerId: string }, actor: string, key: string) =>
     request<PricingException>('/pricing-exceptions', actor, { method: 'POST', headers: { 'Idempotency-Key': key }, body: JSON.stringify(body) }),
   revise: (id: string, body: { discountBps: number; reason: string; expectedVersion: number; expectedRevisionNumber: number }, actor: string, key: string) =>
     request<PricingException>('/pricing-exceptions/' + id + '/revisions', actor, { method: 'POST', headers: { 'Idempotency-Key': key }, body: JSON.stringify(body) }),
