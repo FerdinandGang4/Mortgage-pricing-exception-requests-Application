@@ -1,9 +1,20 @@
+using Microsoft.EntityFrameworkCore;
+using PricingExceptions.API.Data;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+builder.Services.AddDbContext<PricingExceptionsDbContext>(options =>
+    options.UseInMemoryDatabase("PricingExceptions"));
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var database = scope.ServiceProvider.GetRequiredService<PricingExceptionsDbContext>();
+    await database.Database.EnsureCreatedAsync();
+}
 
 if (app.Environment.IsDevelopment())
 {

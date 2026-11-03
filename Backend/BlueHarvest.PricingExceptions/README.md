@@ -2,11 +2,15 @@
 
 ASP.NET Core controller-based API targeting .NET 10. Implementation is being built incrementally.
 
-## Current step: models and entities
+## Current step: models and database context
 
 Models/Entities contains User, PricingExceptionRequest, RequestRevision, ReviewDecision, HistoryEntry, and IdempotencyRecord. Models/Enums contains RequestStatus, DecisionOutcome, and UserRole.
 
-These plain C# models describe the class diagram. Database mapping, workflow rules, validation, DTOs, services, controllers, and tests will be added in later steps. Their folders will be created when implementation begins.
+These plain C# models describe the class diagram. Data/PricingExceptionsDbContext exposes all six entities and maps their relationships, including the composite revision key. Startup registers EF Core InMemory and initializes an empty database named PricingExceptions.
+
+Data is lost when the application stops. InMemory requires no database server, connection string, or migrations. It does not enforce relational foreign keys or unique indexes and does not provide database transactions; database-backed workflow guarantees will need a relational provider later.
+
+Workflow rules, validation, DTOs, services, controllers, seed data, and tests will be added in later steps.
 
 ## Run
 
