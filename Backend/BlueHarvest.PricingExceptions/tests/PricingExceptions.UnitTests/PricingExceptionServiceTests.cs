@@ -171,5 +171,114 @@ public sealed class PricingExceptionServiceTests : IDisposable
         Assert.Single(await service.GetDecisionsAsync(created.Id, manager));
     }
 
+
+    [Fact]
+    public async Task CompetingCreateRetriesProduceOneRequestAndOneHistoryEntry()
+    {
+        var applicationId = Guid.NewGuid();
+        async Task<PricingExceptions.API.Services.Models.PricingExceptionResult> Create()
+        {
+            using var scope = provider.CreateScope();
+            return await scope.ServiceProvider.GetRequiredService<IPricingExceptionService>()
+                .CreateAsync(applicationId, 50, "Offer", manager, "same-key");
+        }
+        var results = await Task.WhenAll(Task.Run(Create), Task.Run(Create));
+        Assert.Equal(results[0], results[1]);
+        using var checkScope = provider.CreateScope();
+        var db = checkScope.ServiceProvider.GetRequiredService<PricingExceptionsDbContext>();
+        Assert.Single(await db.PricingExceptionRequests.ToListAsync());
+        Assert.Single(await db.HistoryEntries.ToListAsync());
+        Assert.Single(await db.IdempotencyRecords.ToListAsync());
+    }
+
+    [Fact]
+    public async Task ReviewAndRevisionRaceAcceptsOnlyOneChange()
+    {
+        using var scope = provider.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<IPricingExceptionService>();
+        var created = await service.CreateAsync(Guid.NewGuid(), 50, "Offer", manager, "create");
+        async Task<bool> Change(bool revise)
+        {
+            using var changeScope = provider.CreateScope();
+            var workflow = changeScope.ServiceProvider.GetRequiredService<IPricingExceptionService>();
+            try
+            {
+                if (revise)
+                    await workflow.SubmitRevisionAsync(created.Id, 60, "New offer", 1, 1, manager, "revise");
+                else
+                    await workflow.ReviewAsync(created.Id, DecisionOutcome.Approved, null, 1, 1, reviewer, "approve");
+                return true;
+            }
+            catch (ConflictException) { return false; }
+        }
+        var outcomes = await Task.WhenAll(Task.Run(() => Change(true)), Task.Run(() => Change(false)));
+        Assert.Single(outcomes, x => x);
+        var snapshot = await service.GetHistorySnapshotAsync(created.Id, manager);
+        Assert.Equal(2, snapshot.Events.Count);
+        Assert.Equal(2, snapshot.Revisions.Count + snapshot.Decisions.Count);
+        Assert.Equal(2, (await service.GetAsync(created.Id, manager)).Version);
+    }
+
+    [Fact]
+    public async Task RevisionRetryPreservesOriginalSnapshotAfterApproval()
+    {
+        using var scope = provider.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<IPricingExceptionService>();
+        var created = await service.CreateAsync(Guid.NewGuid(), 50, "Offer", manager, "create");
+        var revised = await service.SubmitRevisionAsync(created.Id, 60, "Changed", 1, 1, manager, "revise");
+        await service.ReviewAsync(created.Id, DecisionOutcome.Approved, null, 2, 2, reviewer, "approve");
+        Assert.Equal(revised, await service.SubmitRevisionAsync(created.Id, 60, "Changed", 1, 1, manager, "revise"));
+        Assert.Equal(3, (await service.GetHistorySnapshotAsync(created.Id, manager)).Events.Count);
+    }
+
+    [Fact]
+    public async Task CancelledReadDoesNotPreventLaterReads()
+    {
+        using var scope = provider.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<IPricingExceptionService>();
+        var created = await service.CreateAsync(Guid.NewGuid(), 50, "Offer", manager, "create");
+        using var readScope = provider.CreateScope();
+        var reader = readScope.ServiceProvider.GetRequiredService<IPricingExceptionService>();
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            reader.GetHistorySnapshotAsync(created.Id, manager, cancellation.Token));
+        // Cancellation must not leave the shared gate locked.
+        Assert.Single((await reader.GetHistorySnapshotAsync(created.Id, manager)).Events);
+    }
+
+    [Fact]
+    public async Task SubmittedTermsCannotBeModifiedThroughTheDbContext()
+    {
+        using var scope = provider.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<IPricingExceptionService>();
+        var created = await service.CreateAsync(Guid.NewGuid(), 50, "Original", manager, "create");
+        var db = scope.ServiceProvider.GetRequiredService<PricingExceptionsDbContext>();
+        var revision = await db.RequestRevisions.SingleAsync(x => x.RequestId == created.Id);
+        db.Entry(revision).Property(x => x.Reason).CurrentValue = "Overwritten";
+        await Assert.ThrowsAsync<BusinessRuleException>(() => db.SaveChangesAsync());
+        db.ChangeTracker.Clear();
+        Assert.Equal("Original", (await service.GetAsync(created.Id, manager)).Reason);
+    }
+
+    [Theory]
+    [InlineData("decision")]
+    [InlineData("history")]
+    [InlineData("retry")]
+    public async Task HistoricalRecordsCannotBeDeleted(string kind)
+    {
+        using var scope = provider.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<IPricingExceptionService>();
+        var created = await service.CreateAsync(Guid.NewGuid(), 50, "Offer", manager, "create");
+        await service.ReviewAsync(created.Id, DecisionOutcome.Approved, null, 1, 1, reviewer, "approve");
+        var db = scope.ServiceProvider.GetRequiredService<PricingExceptionsDbContext>();
+        if (kind == "decision") db.ReviewDecisions.Remove(await db.ReviewDecisions.SingleAsync());
+        else if (kind == "history") db.HistoryEntries.Remove(await db.HistoryEntries.FirstAsync());
+        else db.IdempotencyRecords.Remove(await db.IdempotencyRecords.FirstAsync());
+        Assert.Throws<BusinessRuleException>(() => db.SaveChanges());
+        db.ChangeTracker.Clear();
+        Assert.Equal(2, (await service.GetHistorySnapshotAsync(created.Id, manager)).Events.Count);
+    }
+
     public void Dispose() => provider.Dispose();
 }

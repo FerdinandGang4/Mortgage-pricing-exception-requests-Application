@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PricingExceptions.API.DTOs.Responses;
 using PricingExceptions.API.Exceptions;
+using PricingExceptions.API.Mappings;
 using PricingExceptions.API.Services.Interfaces;
 
 namespace PricingExceptions.API.Controllers;
@@ -22,7 +23,6 @@ public sealed class ApprovedDiscountsController(IApprovedDiscountService service
         var actorId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var result = await service.GetAsync(id, actorId, cancellationToken)
             ?? throw new NotFoundException("No current approved discount exists for this mortgage application.");
-        return Ok(new ApprovedDiscountResponseDto(result.RequestId, result.MortgageApplicationId,
-            result.DiscountBasisPoints, result.RevisionNumber, result.ReviewerId, result.DecidedAtUtc));
+        return Ok(ApprovedDiscountMapper.ToResponse(result));
     }
 }

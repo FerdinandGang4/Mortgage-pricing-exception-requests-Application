@@ -7,7 +7,7 @@ using PricingExceptions.API.Services.Models;
 
 namespace PricingExceptions.API.Services;
 
-public sealed class ApprovedDiscountService(PricingExceptionsDbContext database, IUserService users) : IApprovedDiscountService
+public sealed class ApprovedDiscountService(PricingExceptionsDbContext database, IUserService users, InMemoryWriteLock writeLock) : IApprovedDiscountService
 {
     public async Task<ApprovedDiscountResult?> GetAsync(Guid applicationId, Guid actorId, CancellationToken cancellationToken = default)
     {
@@ -15,18 +15,26 @@ public sealed class ApprovedDiscountService(PricingExceptionsDbContext database,
         if (applicationId == Guid.Empty)
             throw new BusinessRuleException("A mortgage application identifier is required.");
 
-        return await (
-            from request in database.PricingExceptionRequests.AsNoTracking()
-            join revision in database.RequestRevisions.AsNoTracking()
-                on new { RequestId = request.Id, RevisionNumber = request.CurrentRevisionNumber }
-                equals new { revision.RequestId, revision.RevisionNumber }
-            join decision in database.ReviewDecisions.AsNoTracking()
-                on new { revision.RequestId, revision.RevisionNumber }
-                equals new { decision.RequestId, decision.RevisionNumber }
-            where request.MortgageApplicationId == applicationId
-                && request.Status == RequestStatus.Approved && decision.Outcome == DecisionOutcome.Approved
-            select new ApprovedDiscountResult(request.Id, applicationId, revision.DiscountBasisPoints,
-                revision.RevisionNumber, decision.ReviewedByUserId, decision.DecidedAtUtc)
-        ).SingleOrDefaultAsync(cancellationToken);
+        await writeLock.Semaphore.WaitAsync(cancellationToken);
+        try
+        {
+            return await (
+                from request in database.PricingExceptionRequests.AsNoTracking()
+                join revision in database.RequestRevisions.AsNoTracking()
+                    on new { RequestId = request.Id, RevisionNumber = request.CurrentRevisionNumber }
+                    equals new { revision.RequestId, revision.RevisionNumber }
+                join decision in database.ReviewDecisions.AsNoTracking()
+                    on new { revision.RequestId, revision.RevisionNumber }
+                    equals new { decision.RequestId, decision.RevisionNumber }
+                where request.MortgageApplicationId == applicationId
+                    && request.Status == RequestStatus.Approved && decision.Outcome == DecisionOutcome.Approved
+                select new ApprovedDiscountResult(request.Id, applicationId, revision.DiscountBasisPoints,
+                    revision.RevisionNumber, decision.ReviewedByUserId, decision.DecidedAtUtc)
+            ).SingleOrDefaultAsync(cancellationToken);
+        }
+        finally
+        {
+            writeLock.Semaphore.Release();
+        }
     }
 }

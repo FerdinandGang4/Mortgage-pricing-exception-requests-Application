@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PricingExceptions.API.DTOs.Requests;
 using PricingExceptions.API.DTOs.Responses;
+using PricingExceptions.API.Mappings;
 using PricingExceptions.API.Services.Interfaces;
 
 namespace PricingExceptions.API.Controllers;
@@ -28,14 +29,17 @@ public sealed class PricingExceptionsController(IPricingExceptionService service
     {
         var result = await service.CreateAsync(request.MortgageApplicationId, request.DiscountBps,
             request.Reason, ActorId, idempotencyKey, cancellationToken);
-        return CreatedAtAction(nameof(Get), new { id = result.Id }, PricingExceptionResponseDto.From(result));
+        return CreatedAtAction(nameof(Get), new { id = result.Id }, PricingExceptionMapper.ToResponse(result));
     }
 
     [HttpGet("{id:guid}")]
     [ProducesResponseType<PricingExceptionResponseDto>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<PricingExceptionResponseDto>> Get(Guid id, CancellationToken cancellationToken)
-        => Ok(PricingExceptionResponseDto.From(await service.GetAsync(id, ActorId, cancellationToken)));
+    {
+        var result = await service.GetAsync(id, ActorId, cancellationToken);
+        return Ok(PricingExceptionMapper.ToResponse(result));
+    }
 
     [HttpPost("{id:guid}/revisions")]
     [Authorize(Roles = "RelationshipManager")]
@@ -50,7 +54,7 @@ public sealed class PricingExceptionsController(IPricingExceptionService service
     {
         var result = await service.SubmitRevisionAsync(id, request.DiscountBps, request.Reason,
             request.ExpectedVersion, request.ExpectedRevisionNumber, ActorId, idempotencyKey, cancellationToken);
-        return CreatedAtAction(nameof(Get), new { id }, PricingExceptionResponseDto.From(result));
+        return CreatedAtAction(nameof(Get), new { id }, PricingExceptionMapper.ToResponse(result));
     }
 
     [HttpPost("{id:guid}/decisions")]
@@ -63,21 +67,19 @@ public sealed class PricingExceptionsController(IPricingExceptionService service
         Guid id, ReviewDecisionDto request,
         [FromHeader(Name = "Idempotency-Key")] string idempotencyKey,
         CancellationToken cancellationToken)
-        => Ok(PricingExceptionResponseDto.From(await service.ReviewAsync(id, request.Outcome!.Value,
+    {
+        var result = await service.ReviewAsync(id, request.Outcome!.Value,
             request.Reason, request.ExpectedVersion, request.ReviewedRevisionNumber,
-            ActorId, idempotencyKey, cancellationToken)));
+            ActorId, idempotencyKey, cancellationToken);
+        return Ok(PricingExceptionMapper.ToResponse(result));
+    }
 
     [HttpGet("{id:guid}/history")]
     [ProducesResponseType<HistoryResponseDto>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<HistoryResponseDto>> History(Guid id, CancellationToken cancellationToken)
     {
-        var events = await service.GetHistoryAsync(id, ActorId, cancellationToken);
-        var revisions = await service.GetRevisionsAsync(id, ActorId, cancellationToken);
-        var decisions = await service.GetDecisionsAsync(id, ActorId, cancellationToken);
-        return Ok(new HistoryResponseDto(
-            events.Select(x => new HistoryEntryResponseDto(x.Sequence, x.RevisionNumber, x.Action, x.ActorUserId, x.OccurredAtUtc)).ToList(),
-            revisions.Select(x => new RevisionResponseDto(x.RevisionNumber, x.DiscountBasisPoints, x.Reason, x.SubmittedByUserId, x.SubmittedAtUtc)).ToList(),
-            decisions.Select(x => new DecisionResponseDto(x.RevisionNumber, x.Outcome, x.ReviewReason, x.ReviewedByUserId, x.DecidedAtUtc)).ToList()));
+        var snapshot = await service.GetHistorySnapshotAsync(id, ActorId, cancellationToken);
+        return Ok(HistoryMapper.ToResponse(snapshot));
     }
 }

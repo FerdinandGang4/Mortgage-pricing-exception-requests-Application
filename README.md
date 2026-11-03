@@ -10,3 +10,5 @@ dotnet run --project Backend/BlueHarvest.PricingExceptions/src/PricingExceptions
 ```
 
 Open http://localhost:5267/swagger in Development. The API exposes the pricing exception workflow using EF Core InMemory. See the backend README for seeded demo users, authentication headers, example requests, and tests.
+
+The [Word assumptions document](Documentation/Assumptions.docx), [requirements coverage and submission notes](Backend/BlueHarvest.PricingExceptions/docs/Architecture/SubmissionNotes.md), and [AI development record](Backend/BlueHarvest.PricingExceptions/docs/Architecture/AiDevelopmentLog.md) describe the exercise policies, verification, and production limitations.

@@ -37,9 +37,9 @@ This document records the policies and exercise trade-offs used by the current i
 
 EF Core InMemory is an explicit exercise choice for simple local execution. Requests, users, decisions, history, and retry records disappear when the application process stops. There is no database server, migration setup, or durable audit retention.
 
-A singleton lock serializes workflow writes within one API process. State changes, history, and retry records are submitted in one SaveChanges call. Expected versions and role checks provide application-level safeguards, but InMemory does not supply relational foreign-key enforcement, unique-index enforcement, or database transactions. Partial storage failures do not have guaranteed rollback. Reads are not protected by the write lock and are not guaranteed to form a consistent snapshot across multiple queries.
+A singleton lock coordinates workflow reads and writes within one API process. The current-request lookup, combined history snapshot, and approved-discount query use the same lock as mutations, preventing service writes from interleaving with those reads. State changes, history, and retry records are submitted in one SaveChanges call. Expected versions and role checks provide application-level safeguards, but InMemory does not supply relational foreign-key enforcement, unique-index enforcement, or database transactions. Partial storage failures do not have guaranteed rollback.
 
-This setup assumes a single application instance and that workflow writes go through the registered services. It is not suitable for distributed writers or production persistence. Historical terms and decisions are preserved by service behavior, not by database-level tamper protection.
+This setup assumes a single application instance and that workflow access goes through the registered services. It is not suitable for distributed writers or production persistence. The DbContext rejects changes or deletion of submitted revisions, decisions, history entries, and completed retry records, in addition to the service preserving them. This is application-level protection, not database-level tamper protection.
 
 ### Identity and demo data
 
@@ -63,6 +63,6 @@ The service does not calculate mortgage rates, originate applications, assess af
 
 ## Evidence and limits
 
-The repository contains service tests and an HTTP smoke-test script covering the main workflows and selected failure paths. Passing those checks demonstrates the tested local behavior; it does not establish production security, durable retry safety, relational atomicity, or complete race-condition coverage.
+The repository contains automated service and HTTP integration tests plus a live HTTP smoke-test script. Tests cover the main workflows, reapproval, concurrent retry and decision scenarios, review-versus-revision conflict, historical record protection, identity and role failures, malformed inputs, error responses, and Swagger. Passing those checks demonstrates the tested local behavior; it does not establish production security, durable retry safety, relational atomicity, or exhaustive race-condition coverage.
 
 References: the assignment PDF and solution design in this directory, the entity diagram in ../EntityClassDiagram, and sequence diagrams in ../SequenceDiagrams. Where a proposal in those documents differs from the current code, this document describes the implemented exercise behavior.

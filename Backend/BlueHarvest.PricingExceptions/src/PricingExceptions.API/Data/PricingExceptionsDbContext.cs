@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PricingExceptions.API.Models.Entities;
+using PricingExceptions.API.Exceptions;
 
 namespace PricingExceptions.API.Data;
 
@@ -12,6 +13,26 @@ public sealed class PricingExceptionsDbContext(
     public DbSet<ReviewDecision> ReviewDecisions => Set<ReviewDecision>();
     public DbSet<HistoryEntry> HistoryEntries => Set<HistoryEntry>();
     public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        ProtectHistoricalRecords();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        ProtectHistoricalRecords();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    private void ProtectHistoricalRecords()
+    {
+        if (ChangeTracker.Entries().Any(entry =>
+            entry.State is EntityState.Modified or EntityState.Deleted &&
+            entry.Entity is RequestRevision or ReviewDecision or HistoryEntry or IdempotencyRecord))
+            throw new BusinessRuleException("Submitted revisions, decisions, history and completed retry records cannot be changed or deleted.");
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

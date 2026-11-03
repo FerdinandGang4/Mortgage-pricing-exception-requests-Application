@@ -14,4 +14,5 @@ public interface IPricingExceptionService
     Task<IReadOnlyList<HistoryEntry>> GetHistoryAsync(Guid requestId, Guid actorId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<RequestRevision>> GetRevisionsAsync(Guid requestId, Guid actorId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<ReviewDecision>> GetDecisionsAsync(Guid requestId, Guid actorId, CancellationToken cancellationToken = default);
+    Task<RequestHistoryResult> GetHistorySnapshotAsync(Guid requestId, Guid actorId, CancellationToken cancellationToken = default);
 }

@@ -50,7 +50,7 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IPricingExceptionService, PricingExceptionService>();
 builder.Services.AddScoped<IApprovedDiscountService, ApprovedDiscountService>();
 builder.Services.AddDbContext<PricingExceptionsDbContext>(options =>
-    options.UseInMemoryDatabase("PricingExceptions"));
+    options.UseInMemoryDatabase(builder.Configuration["Database:Name"] ?? "PricingExceptions"));
 
 var app = builder.Build();
 app.UseExceptionHandler();

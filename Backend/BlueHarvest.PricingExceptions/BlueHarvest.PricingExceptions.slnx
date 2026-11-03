@@ -3,6 +3,7 @@
     <Project Path="src/PricingExceptions.API/PricingExceptions.API.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/PricingExceptions.IntegrationTests/PricingExceptions.IntegrationTests.csproj" />
     <Project Path="tests/PricingExceptions.UnitTests/PricingExceptions.UnitTests.csproj" />
   </Folder>
 </Solution>

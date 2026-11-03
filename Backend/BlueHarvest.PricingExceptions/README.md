@@ -1,8 +1,8 @@
 # Blue Harvest Pricing Exceptions
 
-ASP.NET Core controller-based API targeting .NET 10. Implementation is being built incrementally.
+ASP.NET Core controller-based API targeting .NET 10 for creating, independently reviewing, and retrieving mortgage pricing exceptions. It runs locally without private infrastructure or paid services.
 
-## Current step: controllers and HTTP workflow
+## Implementation
 
 Models/Entities contains User, PricingExceptionRequest, RequestRevision, ReviewDecision, HistoryEntry, and IdempotencyRecord. Models/Enums contains RequestStatus, DecisionOutcome, and UserRole.
 
@@ -20,7 +20,11 @@ Services validate input, ownership, self-review restrictions, expected versions,
 
 Current demo policies: one request per application, discounts of 1–500 basis points, reasons up to 2000 characters, and revisions allowed after a decision. A revision makes the request Pending and withdraws the previous effective approval. All known internal users can read requests and history. These policies remain assumptions to confirm.
 
-InMemoryWriteLock serializes service writes within one application process. It is not a substitute for relational transactions or constraints and does not support multiple application instances. Writes use one SaveChanges call for state, history, and the retry record, but InMemory does not guarantee rollback after storage failures. The service owns changes within its DbContext scope; callers must not stage unrelated changes in that scope.
+InMemoryWriteLock coordinates service reads and writes within one application process. The history endpoint reads events, revisions, and decisions as one snapshot. SaveChanges rejects edits or deletion of historical revisions, decisions, history, and completed retry records. The lock is not a substitute for relational transactions or constraints and does not support multiple application instances. Writes use one SaveChanges call for state, history, and the retry record, but InMemory does not guarantee rollback after storage failures. The service owns changes within its DbContext scope; callers must not stage unrelated changes in that scope.
+
+The selected InMemory storage differs from the SQLite proposal in the design documents. This is an explicit exercise trade-off, not a claim of implementing SQLite durability or transaction semantics.
+
+Observability/PricingExceptionsTelemetry exposes ActivitySource and Meter hooks named BlueHarvest.PricingExceptions, with mutation, replay, and conflict counters tagged only by operation type. No customer reasons or identifiers are added to telemetry tags. Exporters are not configured.
 
 Controllers obtain actor IDs from authenticated claims. Development authentication accepts an X-User-Id header for one of the seeded demo identities below. This header is deliberately disabled outside Development; configure a trusted identity provider before running authenticated workflows in another environment. No production identity provider is configured yet. Mortgage application existence validation is pending; non-empty application IDs are accepted as external references for now.
 
@@ -71,13 +75,40 @@ Every POST requires Idempotency-Key. Reuse a key only for an identical retry of 
 
 HTTP DTOs are separate from service results and persistence entities. The history response includes events, revision terms, and past decisions.
 
+Response conversion is organized in the Mappings folder:
+
+- PricingExceptionMapper converts a PricingExceptionResult into PricingExceptionResponseDto.
+- ApprovedDiscountMapper converts an ApprovedDiscountResult into ApprovedDiscountResponseDto.
+- HistoryMapper converts a history snapshot, including its events, revisions, and decisions, into HistoryResponseDto.
+
+The request flow is: request DTO -> controller -> service -> DbContext. The service returns a result, the controller calls the corresponding mapper, and the response DTO is serialized to JSON. Request DTO properties currently become service method arguments directly. Mappers are static, explicit property mappings; business validation stays in the services.
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Controller
+    participant Service
+    participant DbContext
+    participant Mapper
+    Client->>Controller: JSON bound to request DTO
+    Controller->>Service: Input values and authenticated actor
+    Service->>DbContext: Read or save workflow data
+    DbContext-->>Service: Data
+    Service-->>Controller: Service result
+    Controller->>Mapper: ToResponse(result)
+    Mapper-->>Controller: Response DTO
+    Controller-->>Client: HTTP status and JSON
+```
+
 ## Service validation
 
 ```powershell
 dotnet test BlueHarvest.PricingExceptions.slnx
 ```
 
-The tests exercise InMemory workflows: approval followed by revision, decline, preserved history and terms, retries, key conflicts, unauthorized actions, self-review, stale versions, invalid input, duplicate applications, missing requests, and competing decisions across service scopes. They do not validate relational guarantees.
+The automated suite contains 18 service cases and 9 HTTP integration cases. It covers approval, decline, revision and reapproval, preserved history, rejected historical edits/deletes, concurrent retries, decision-versus-revision conflicts, exact HTTP retry responses, validation, status codes, identity and role checks, Swagger, and disabled demo authentication outside Development. Each test host receives an isolated InMemory store. Tests do not validate relational guarantees.
+
+The GitHub Actions workflow restores, builds and tests the backend with .NET 10. It has been added to the repository; successful remote execution must be verified after pushing.
 
 With the Development API running, run the HTTP smoke checks from this directory:
 
@@ -92,14 +123,25 @@ This creates a fresh demo request and exercises the controller workflow, validat
 From this directory:
 
 ```powershell
+dotnet restore BlueHarvest.PricingExceptions.slnx
 dotnet build BlueHarvest.PricingExceptions.slnx
 dotnet run --project src/PricingExceptions.API --launch-profile http
 ```
 
 Open http://localhost:5267/swagger in Development. Visual Studio launch profiles open Swagger automatically; terminal launches require opening the URL manually.
 
+Stop the API before rebuilding if Windows reports a locked executable. Restarting resets all InMemory workflow data and recreates the three demo users.
+
 ## Design references
 
 See [Assumptions and scope decisions](docs/Architecture/Assumptions.md) for implemented business policies, InMemory and demo-authentication trade-offs, and decisions requiring stakeholder confirmation.
+
+The [Word assumptions document](../../Documentation/Assumptions.docx) is generated from the same Markdown source. To regenerate it from this directory:
+
+```powershell
+./tools/Export-AssumptionsDocument.ps1
+```
+
+See [submission notes](docs/Architecture/SubmissionNotes.md) for requirement coverage and production changes, and [AI development log](docs/Architecture/AiDevelopmentLog.md) for contribution and verification details. Actual developer time is not yet recorded and must be entered before submission.
 
 Design documents are organized under docs/EntityClassDiagram, docs/SequenceDiagrams, and docs/Architecture.
