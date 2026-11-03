@@ -100,4 +100,6 @@ Open http://localhost:5267/swagger in Development. Visual Studio launch profiles
 
 ## Design references
 
+See [Assumptions and scope decisions](docs/Architecture/Assumptions.md) for implemented business policies, InMemory and demo-authentication trade-offs, and decisions requiring stakeholder confirmation.
+
 Design documents are organized under docs/EntityClassDiagram, docs/SequenceDiagrams, and docs/Architecture.
