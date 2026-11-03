@@ -11,7 +11,7 @@ npm.cmd install
 npm.cmd run dev
 ```
 
-Open the local URL printed by Vite (normally http://localhost:5173). On platforms other than Windows, use npm instead of npm.cmd.
+Open the local URL printed by Vite (normally http://localhost:5173). The frontend runs independently of the ASP.NET Core backend and currently makes no API calls. On platforms other than Windows, use npm instead of npm.cmd.
 
 ## Verify
 
