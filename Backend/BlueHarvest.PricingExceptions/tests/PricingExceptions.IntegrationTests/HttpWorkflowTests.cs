@@ -8,6 +8,59 @@ namespace PricingExceptions.IntegrationTests;
 
 public sealed class HttpWorkflowTests
 {
+    public static IEnumerable<object[]> AssignmentCases()
+    {
+        var managers = new[] { Manager, "11111111-1111-1111-1111-111111111112", "11111111-1111-1111-1111-111111111113" };
+        var reviewers = new[] { Reviewer, "22222222-2222-2222-2222-222222222223", "22222222-2222-2222-2222-222222222224", "22222222-2222-2222-2222-222222222225", "22222222-2222-2222-2222-222222222226" };
+        foreach (var manager in managers)
+            foreach (var reviewer in reviewers)
+                foreach (var outcome in new[] { "Approved", "Declined" })
+                    yield return new object[] { manager, reviewer, outcome };
+    }
+
+    [Theory]
+    [MemberData(nameof(AssignmentCases))]
+    public async Task EachManagerCanAssignEachReviewerAndOnlyAssigneeCanDecide(string managerId, string reviewerId, string outcome)
+    {
+        await using var factory = CreateFactory();
+        using var manager = Client(factory, managerId);
+        var directory = await manager.GetFromJsonAsync<JsonElement>("/api/v1/users/reviewers");
+        var assignedUser = directory.EnumerateArray().Single(user => user.GetProperty("id").GetString() == reviewerId);
+        var applicationId = Guid.NewGuid();
+        var created = await Post(manager, "/api/v1/pricing-exceptions",
+            new { mortgageApplicationId = applicationId, discountBps = 45, reason = "Reviewer assignment matrix", reviewerId }, "create");
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var request = await Json(created);
+        var id = request.GetProperty("id").GetGuid();
+        Assert.Equal(managerId, request.GetProperty("requesterId").GetString());
+        Assert.Equal(reviewerId, request.GetProperty("assignedReviewerId").GetString());
+        Assert.Equal(assignedUser.GetProperty("displayName").GetString(), request.GetProperty("assignedReviewerName").GetString());
+
+        var decision = new { outcome, expectedVersion = 1, reviewedRevisionNumber = 1, reason = "Independent review reason" };
+        Assert.Equal(HttpStatusCode.Forbidden, (await Post(manager, $"/api/v1/pricing-exceptions/{id}/decisions", decision, "manager-review")).StatusCode);
+        foreach (var other in directory.EnumerateArray().Where(user => user.GetProperty("id").GetString() != reviewerId))
+        {
+            using var unassigned = Client(factory, other.GetProperty("id").GetString());
+            Assert.Equal(HttpStatusCode.Forbidden, (await Post(unassigned, $"/api/v1/pricing-exceptions/{id}/decisions", decision, "unassigned-review")).StatusCode);
+        }
+
+        using var reviewer = Client(factory, reviewerId);
+        var listed = await reviewer.GetFromJsonAsync<JsonElement>("/api/v1/pricing-exceptions");
+        Assert.Contains(listed.EnumerateArray(), item => item.GetProperty("id").GetGuid() == id);
+        Assert.Equal(HttpStatusCode.OK, (await Post(reviewer, $"/api/v1/pricing-exceptions/{id}/decisions", decision, "assigned-review")).StatusCode);
+        var history = await manager.GetFromJsonAsync<JsonElement>($"/api/v1/pricing-exceptions/{id}/history");
+        Assert.Equal(2, history.GetProperty("events").GetArrayLength());
+        var saved = Assert.Single(history.GetProperty("decisions").EnumerateArray());
+        Assert.Equal(reviewerId, saved.GetProperty("reviewerId").GetString());
+        Assert.Equal(assignedUser.GetProperty("displayName").GetString(), saved.GetProperty("reviewerName").GetString());
+        Assert.Equal(outcome, saved.GetProperty("outcome").GetString());
+        Assert.Equal(decision.reason, saved.GetProperty("reason").GetString());
+        Assert.True(DateTimeOffset.TryParse(saved.GetProperty("decidedAtUtc").GetString(), out _));
+
+        using var process = Client(factory, MortgageProcess);
+        var discount = await process.GetAsync($"/api/v1/mortgage-applications/{applicationId}/approved-discount");
+        Assert.Equal(outcome == "Approved" ? HttpStatusCode.OK : HttpStatusCode.NotFound, discount.StatusCode);
+    }
 
     [Fact]
     public async Task RequestListReturnsAllCurrentRequestsForKnownInternalUsers()
