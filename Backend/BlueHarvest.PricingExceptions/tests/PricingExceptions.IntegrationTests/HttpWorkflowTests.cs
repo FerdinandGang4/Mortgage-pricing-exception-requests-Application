@@ -34,8 +34,8 @@ public sealed class HttpWorkflowTests
         Assert.Equal(75, current.GetProperty("discountBps").GetInt32());
         Assert.Equal(2, current.GetProperty("revisionNumber").GetInt32());
         Assert.Equal("Pending", current.GetProperty("status").GetString());
-        Assert.Equal("Demo Manager", current.GetProperty("requesterName").GetString());
-        Assert.Equal("Demo Reviewer", current.GetProperty("assignedReviewerName").GetString());
+        Assert.Equal("James Wilson (Manager)", current.GetProperty("requesterName").GetString());
+        Assert.Equal("David Miller (Reviewer)", current.GetProperty("assignedReviewerName").GetString());
         Assert.Equal(JsonValueKind.Null, current.GetProperty("reviewerId").ValueKind);
     }
 
@@ -47,10 +47,11 @@ public sealed class HttpWorkflowTests
         using var reviewer = Client(factory, Reviewer);
         var me = await manager.GetFromJsonAsync<JsonElement>("/api/v1/users/me");
         Assert.Equal(Manager, me.GetProperty("id").GetString());
-        Assert.Equal("Demo Manager", me.GetProperty("displayName").GetString());
+        Assert.Equal("James Wilson (Manager)", me.GetProperty("displayName").GetString());
         var reviewers = await manager.GetFromJsonAsync<JsonElement>("/api/v1/users/reviewers");
-        Assert.Equal(Reviewer, reviewers[0].GetProperty("id").GetString());
-        Assert.Equal("Demo Reviewer", reviewers[0].GetProperty("displayName").GetString());
+        Assert.Equal(5, reviewers.GetArrayLength());
+        var originalReviewer = reviewers.EnumerateArray().Single(user => user.GetProperty("id").GetString() == Reviewer);
+        Assert.Equal("David Miller (Reviewer)", originalReviewer.GetProperty("displayName").GetString());
         Assert.All(reviewers.EnumerateArray(), user => Assert.Equal("Reviewer", user.GetProperty("role").GetString()));
         Assert.Equal(HttpStatusCode.Forbidden, (await reviewer.GetAsync("/api/v1/users/reviewers")).StatusCode);
         var created = await Post(manager, "/api/v1/pricing-exceptions", new
@@ -61,15 +62,15 @@ public sealed class HttpWorkflowTests
         Assert.Equal(HttpStatusCode.Created, created.StatusCode);
         var result = await Json(created);
         Assert.Equal(Manager, result.GetProperty("requesterId").GetString());
-        Assert.Equal("Demo Manager", result.GetProperty("requesterName").GetString());
+        Assert.Equal("James Wilson (Manager)", result.GetProperty("requesterName").GetString());
         Assert.Equal(Reviewer, result.GetProperty("assignedReviewerId").GetString());
-        Assert.Equal("Demo Reviewer", result.GetProperty("assignedReviewerName").GetString());
+        Assert.Equal("David Miller (Reviewer)", result.GetProperty("assignedReviewerName").GetString());
         var id = result.GetProperty("id").GetGuid();
         var decision = await Post(reviewer, $"/api/v1/pricing-exceptions/{id}/decisions",
             new { outcome = "Approved", expectedVersion = 1, reviewedRevisionNumber = 1, reviewerName = "Spoofed name" }, "decision");
-        Assert.Equal("Demo Reviewer", (await Json(decision)).GetProperty("reviewerName").GetString());
+        Assert.Equal("David Miller (Reviewer)", (await Json(decision)).GetProperty("reviewerName").GetString());
         var history = await manager.GetFromJsonAsync<JsonElement>($"/api/v1/pricing-exceptions/{id}/history");
-        Assert.Equal("Demo Reviewer", history.GetProperty("decisions")[0].GetProperty("reviewerName").GetString());
+        Assert.Equal("David Miller (Reviewer)", history.GetProperty("decisions")[0].GetProperty("reviewerName").GetString());
         Assert.False(string.IsNullOrWhiteSpace(history.GetProperty("decisions")[0].GetProperty("decidedAtUtc").GetString()));
     }
 
