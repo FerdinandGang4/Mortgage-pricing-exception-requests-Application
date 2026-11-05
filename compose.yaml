@@ -35,6 +35,8 @@ services:
     build:
       context: .
       dockerfile: FrontEnd/Dockerfile
+      args:
+        VITE_ENABLE_DEMO_USERS: "true"
     ports:
       - "127.0.0.1:${FRONTEND_PORT:-5173}:80"
     depends_on:

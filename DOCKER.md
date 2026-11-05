@@ -33,6 +33,8 @@ Compose passes ConnectionStrings__PricingExceptions to the API using Host=postgr
 
 ASPNETCORE_ENVIRONMENT=Development retains the existing demo users, demo header authentication, and Swagger. No authentication implementation was added.
 
+The local Compose frontend explicitly builds with `VITE_ENABLE_DEMO_USERS=true` so the Select Demo User picker can switch between the seeded managers, reviewers, and Mortgage Process user. The Vite development server enables it automatically. Normal frontend production builds and direct Dockerfile builds default to disabling the picker and omitting `X-User-Id`. Do not enable this build flag for production deployments; the API independently rejects demo headers outside Development.
+
 ## Test
 
 After Compose startup, run from the solution directory:

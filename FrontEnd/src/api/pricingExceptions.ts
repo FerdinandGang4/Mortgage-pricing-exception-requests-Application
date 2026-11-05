@@ -1,4 +1,5 @@
 import type { ApprovedDiscount, PricingException, RequestHistory, UserSummary } from '../types'
+import { demoUsersEnabled } from '../lib/format'
 
 export class ApiError extends Error {
   readonly status: number
@@ -8,7 +9,7 @@ async function request<T>(path: string, actor: string, init: RequestInit = {}): 
   let response: Response
   try {
     response = await fetch('/api/v1' + path, {
-      ...init, headers: { 'Content-Type': 'application/json', 'X-User-Id': actor, ...init.headers },
+      ...init, headers: { 'Content-Type': 'application/json', ...(demoUsersEnabled ? { 'X-User-Id': actor } : {}), ...init.headers },
     })
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') throw error
