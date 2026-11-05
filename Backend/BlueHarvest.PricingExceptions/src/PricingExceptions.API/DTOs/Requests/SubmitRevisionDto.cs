@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace PricingExceptions.API.DTOs.Requests;
 
+// Expected values describe the state the caller viewed before submitting replacement terms.
 public sealed record SubmitRevisionDto(
     [Range(1, 500)] int DiscountBps,
     [Required, StringLength(2000)] string Reason,

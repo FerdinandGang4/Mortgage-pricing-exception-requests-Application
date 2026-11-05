@@ -8,6 +8,7 @@ public sealed class GlobalExceptionHandler(IProblemDetailsService problems, ILog
 {
     public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception exception, CancellationToken cancellationToken)
     {
+        // Translate domain failures into a consistent Problem Details response for API clients.
         var (status, title) = exception switch
         {
             NotFoundException => (404, "Resource not found"),
@@ -25,6 +26,7 @@ public sealed class GlobalExceptionHandler(IProblemDetailsService problems, ILog
             ProblemDetails = new ProblemDetails
             {
                 Status = status, Title = title,
+                // Unexpected failure details stay in server logs; the trace ID links the response.
                 Detail = status == 500 ? null : exception.Message,
                 Extensions = { ["traceId"] = context.TraceIdentifier }
             }

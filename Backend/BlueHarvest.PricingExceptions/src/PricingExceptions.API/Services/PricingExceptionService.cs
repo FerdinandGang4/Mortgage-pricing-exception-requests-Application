@@ -12,6 +12,7 @@ using PricingExceptions.API.Services.Models;
 
 namespace PricingExceptions.API.Services;
 
+// Owns workflow transitions, revision history, concurrency checks, and retry handling.
 public sealed class PricingExceptionService(
     PricingExceptionsDbContext database, IUserService users,
     InMemoryWriteLock writeLock, TimeProvider clock) : IPricingExceptionService
@@ -25,6 +26,7 @@ public sealed class PricingExceptionService(
             var requests = await database.PricingExceptionRequests.AsNoTracking()
                 .OrderByDescending(request => request.CreatedAtUtc).ThenBy(request => request.Id)
                 .ToListAsync(cancellationToken);
+            // Match terms and decisions to each request's current revision, preserving older snapshots.
             var revisions = (await database.RequestRevisions.AsNoTracking().ToListAsync(cancellationToken))
                 .ToDictionary(revision => (revision.RequestId, revision.RevisionNumber));
             var decisions = (await database.ReviewDecisions.AsNoTracking().ToListAsync(cancellationToken))
@@ -64,6 +66,7 @@ public sealed class PricingExceptionService(
                 Id = Guid.NewGuid(),
                 MortgageApplicationId = applicationId,
                 CreatedByUserId = actorId,
+                // Store name snapshots so later user profile edits do not rewrite the request record.
                 RequesterName = requester.DisplayName,
                 AssignedReviewerId = reviewer.Id,
                 AssignedReviewerName = reviewer.DisplayName,
@@ -107,6 +110,7 @@ public sealed class PricingExceptionService(
                 throw new ForbiddenException("Only the creator may revise this request.");
             CheckVersion(request, expectedVersion, expectedRevisionNumber);
             var now = clock.GetUtcNow();
+            // New terms require a fresh decision; the previous revision and approval remain in history.
             request.CurrentRevisionNumber++;
             request.Version++;
             request.Status = RequestStatus.Pending;
@@ -134,6 +138,7 @@ public sealed class PricingExceptionService(
             if (request.AssignedReviewerId != actorId)
                 throw new ForbiddenException("Only the selected reviewer may decide this request.");
             CheckVersion(request, expectedVersion, reviewedRevisionNumber);
+            // Each revision can have only one decision, made while that revision is still pending.
             if (request.Status != RequestStatus.Pending ||
                 await database.ReviewDecisions.AnyAsync(x => x.RequestId == requestId && x.RevisionNumber == reviewedRevisionNumber, cancellationToken))
                 throw new ConflictException("The revision has already been decided.");
@@ -181,6 +186,7 @@ public sealed class PricingExceptionService(
                 .OrderBy(x => x.RevisionNumber).ToListAsync(cancellationToken), cancellationToken);
     }
 
+    // Read all history collections under one lock so a concurrent write cannot split the snapshot.
     public async Task<RequestHistoryResult> GetHistorySnapshotAsync(Guid requestId, Guid actorId, CancellationToken cancellationToken = default)
         => await ReadRequestAsync(requestId, actorId, async () => new RequestHistoryResult(
             await database.HistoryEntries.AsNoTracking().Where(x => x.RequestId == requestId)
@@ -190,6 +196,7 @@ public sealed class PricingExceptionService(
             await database.ReviewDecisions.AsNoTracking().Where(x => x.RequestId == requestId)
                 .OrderBy(x => x.RevisionNumber).ToListAsync(cancellationToken)), cancellationToken);
 
+    // Reads share the write lock because the InMemory provider offers no transactional snapshot.
     private async Task<T> ReadRequestAsync<T>(Guid requestId, Guid actorId, Func<Task<T>> read, CancellationToken cancellationToken)
     {
         await users.GetRequiredAsync(actorId, cancellationToken);
@@ -211,6 +218,7 @@ public sealed class PricingExceptionService(
     {
         if (string.IsNullOrWhiteSpace(key) || key.Length > 200)
             throw new BusinessRuleException("An idempotency key of up to 200 characters is required.");
+        // Fingerprint the input to distinguish an identical retry from conflicting reuse of its key.
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(payload))));
         var operationName = scope.Split(':', 2)[0];
         using var activity = PricingExceptionsTelemetry.Activities.StartActivity("pricing-exception." + operationName);
@@ -221,6 +229,7 @@ public sealed class PricingExceptionService(
             // Always reload mutable request state after obtaining the process-wide lock.
             // This service owns writes in its scope; callers should not stage unrelated changes.
             database.ChangeTracker.Clear();
+            // Keys are scoped to the actor and operation (including the target request for updates).
             var existing = await database.IdempotencyRecords.AsNoTracking().SingleOrDefaultAsync(
                 x => x.ActorUserId == actorId && x.OperationScope == scope && x.Key == key, cancellationToken);
             if (existing is not null)
@@ -228,6 +237,7 @@ public sealed class PricingExceptionService(
                 if (existing.PayloadHash != hash)
                     throw new ConflictException("The idempotency key was already used with different input.");
                 PricingExceptionsTelemetry.Replays.Add(1, operationTag);
+                // Replay the original result even if the request has since advanced to another version.
                 return JsonSerializer.Deserialize<PricingExceptionResult>(existing.ResponseJson)!;
             }
             var result = await operation();
@@ -242,6 +252,8 @@ public sealed class PricingExceptionService(
                 ResponseStatusCode = scope.StartsWith("review:") ? 200 : 201,
                 ResponseJson = JsonSerializer.Serialize(result)
             });
+            // Save workflow changes, history, and the retry result together in one call.
+            // InMemory still provides no transactional rollback if storage fails partway through.
             await database.SaveChangesAsync(cancellationToken);
             PricingExceptionsTelemetry.Mutations.Add(1, operationTag);
             return result;
@@ -281,6 +293,8 @@ public sealed class PricingExceptionService(
             throw new BusinessRuleException("A reason of up to 2000 characters is required.");
     }
 
+    // Version changes on every mutation; revision changes only when new terms are submitted.
+    // Both must match what the caller viewed before editing or reviewing.
     private static void CheckVersion(PricingExceptionRequest request, long version, int revision)
     {
         if (request.Version != version || request.CurrentRevisionNumber != revision)
@@ -304,6 +318,7 @@ public sealed class PricingExceptionService(
             Id = Guid.NewGuid(),
             RequestId = request.Id,
             RevisionNumber = request.CurrentRevisionNumber,
+            // The request version provides a stable event order even when timestamps are identical.
             Sequence = request.Version,
             Action = action,
             ActorUserId = actor,

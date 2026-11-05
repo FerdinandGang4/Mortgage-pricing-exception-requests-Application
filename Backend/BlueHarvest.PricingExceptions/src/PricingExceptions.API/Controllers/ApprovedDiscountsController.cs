@@ -21,6 +21,7 @@ public sealed class ApprovedDiscountsController(IApprovedDiscountService service
     public async Task<ActionResult<ApprovedDiscountResponseDto>> Get(Guid id, CancellationToken cancellationToken)
     {
         var actorId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        // A missing effective approval is a 404, including when revised terms await a new decision.
         var result = await service.GetAsync(id, actorId, cancellationToken)
             ?? throw new NotFoundException("No current approved discount exists for this mortgage application.");
         return Ok(ApprovedDiscountMapper.ToResponse(result));

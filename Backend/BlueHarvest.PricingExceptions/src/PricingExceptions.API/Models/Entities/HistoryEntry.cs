@@ -1,5 +1,6 @@
 namespace PricingExceptions.API.Models.Entities;
 
+// Append-only event describing who changed the workflow and which revision was affected.
 public sealed class HistoryEntry
 {
     public Guid Id { get; init; }

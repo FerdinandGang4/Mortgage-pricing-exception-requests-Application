@@ -1,6 +1,6 @@
 namespace PricingExceptions.API.Models.Entities;
 
-// Submitted snapshots must be preserved by the future workflow implementation.
+// Immutable submitted terms; DbContext save guards prevent later edits or deletion.
 public sealed class RequestRevision
 {
     public Guid RequestId { get; init; }

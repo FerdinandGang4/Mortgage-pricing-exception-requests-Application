@@ -15,6 +15,7 @@ namespace PricingExceptions.API.Controllers;
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
 public sealed class PricingExceptionsController(IPricingExceptionService service) : ControllerBase
 {
+    // Take the actor from authenticated claims rather than accepting a caller ID in the body.
     private Guid ActorId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     [HttpGet]
@@ -34,6 +35,7 @@ public sealed class PricingExceptionsController(IPricingExceptionService service
     {
         var result = await service.CreateAsync(request.MortgageApplicationId, request.DiscountBps,
             request.Reason, request.ReviewerId!.Value, ActorId, idempotencyKey, cancellationToken);
+        // Include a Location header pointing to the newly created request's GET endpoint.
         return CreatedAtAction(nameof(Get), new { id = result.Id }, PricingExceptionMapper.ToResponse(result));
     }
 

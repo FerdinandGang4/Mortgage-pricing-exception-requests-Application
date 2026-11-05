@@ -1,0 +1,13 @@
+**/bin
+**/obj
+**/node_modules
+**/test-results
+**/playwright-report
+.git
+.aws
+.codex
+.agents
+**/.env
+**/*.env
+Documentation
+Deliverables

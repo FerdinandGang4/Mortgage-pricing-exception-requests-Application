@@ -26,6 +26,8 @@ public sealed class PricingExceptionsDbContext(
         return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
     }
 
+    // Enforce append-only audit and retry records for both sync and async saves.
+    // Current request state stays mutable; submitted snapshots must remain unchanged.
     private void ProtectHistoricalRecords()
     {
         if (ChangeTracker.Entries().Any(entry =>
@@ -38,11 +40,13 @@ public sealed class PricingExceptionsDbContext(
     {
         base.OnModelCreating(modelBuilder);
 
+        // Revision numbers are local to a request, so both fields form the identity.
         modelBuilder.Entity<RequestRevision>()
             .HasKey(x => new { x.RequestId, x.RevisionNumber });
 
         modelBuilder.Entity<PricingExceptionRequest>(request =>
         {
+            // EF detects updates made with an older tracked version in addition to service checks.
             request.Property(x => x.Version).IsConcurrencyToken();
             request.HasOne<User>().WithMany().HasForeignKey(x => x.CreatedByUserId);
             request.HasOne<User>().WithMany().HasForeignKey(x => x.AssignedReviewerId);
@@ -55,6 +59,8 @@ public sealed class PricingExceptionsDbContext(
         modelBuilder.Entity<RequestRevision>()
             .HasOne<User>().WithMany().HasForeignKey(x => x.SubmittedByUserId);
 
+        // These relationships describe the intended model; InMemory does not enforce
+        // relational foreign keys or unique constraints, so services also guard workflow rules.
         modelBuilder.Entity<ReviewDecision>(decision =>
         {
             decision.HasOne<RequestRevision>().WithOne()

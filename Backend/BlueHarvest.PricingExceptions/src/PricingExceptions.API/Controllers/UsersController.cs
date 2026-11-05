@@ -12,6 +12,7 @@ namespace PricingExceptions.API.Controllers;
 [Route("api/v1/users")]
 public sealed class UsersController(IUserService users) : ControllerBase
 {
+    // Resolve the signed-in profile from claims; clients cannot choose another user in the route.
     private Guid ActorId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     [HttpGet("me")]

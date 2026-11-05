@@ -24,9 +24,11 @@ public sealed class DevelopmentAuthenticationHandler(
             return AuthenticateResult.NoResult();
         if (!Guid.TryParse(header, out var id))
             return AuthenticateResult.Fail("Invalid demo user ID.");
+        // Resolve the supplied ID against stored demo users; roles never come from the header.
         var user = await database.Users.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, Context.RequestAborted);
         if (user is null)
             return AuthenticateResult.Fail("Unknown demo user.");
+        // Controllers use the identifier claim as the actor and role claims for endpoint access.
         var identity = new ClaimsIdentity(new[]
         {
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),

@@ -1,5 +1,6 @@
 namespace PricingExceptions.API.Models.Entities;
 
+// Stores a completed operation's input fingerprint and result so identical retries can be replayed.
 public sealed class IdempotencyRecord
 {
     public Guid Id { get; set; }

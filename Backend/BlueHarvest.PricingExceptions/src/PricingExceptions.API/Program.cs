@@ -18,10 +18,12 @@ if (builder.Environment.IsDevelopment())
     builder.Logging.AddDebug();
 }
 
+// Keep enum values readable in the API contract and reject numeric enum input.
 builder.Services.AddControllers().AddJsonOptions(options =>
     options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(allowIntegerValues: false)));
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+// The header-based scheme is for local demos; its handler refuses non-Development requests.
 builder.Services.AddAuthentication(DevelopmentAuthenticationHandler.SchemeName)
     .AddScheme<AuthenticationSchemeOptions, DevelopmentAuthenticationHandler>(DevelopmentAuthenticationHandler.SchemeName, _ => { });
 builder.Services.AddAuthorization();
@@ -44,11 +46,13 @@ builder.Services.AddOpenApi(options =>
         });
     }
 });
+// One shared lock coordinates all scoped workflow services in this API process.
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<InMemoryWriteLock>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IPricingExceptionService, PricingExceptionService>();
 builder.Services.AddScoped<IApprovedDiscountService, ApprovedDiscountService>();
+// InMemory keeps setup self-contained, but all workflow data is lost on shutdown.
 builder.Services.AddDbContext<PricingExceptionsDbContext>(options =>
     options.UseInMemoryDatabase(builder.Configuration["Database:Name"] ?? "PricingExceptions"));
 
@@ -60,6 +64,7 @@ app.UseStatusCodePages(async context =>
     await problems.TryWriteAsync(new ProblemDetailsContext { HttpContext = context.HttpContext });
 });
 
+// Resolve the scoped DbContext before serving requests and seed demo identities only locally.
 using (var scope = app.Services.CreateScope())
 {
     var database = scope.ServiceProvider.GetRequiredService<PricingExceptionsDbContext>();
@@ -85,6 +90,7 @@ if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 
+// Authentication builds the user claims before authorization checks endpoint access.
 app.UseAuthentication();
 app.UseAuthorization();
 

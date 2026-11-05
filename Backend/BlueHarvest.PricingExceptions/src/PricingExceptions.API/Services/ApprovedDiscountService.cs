@@ -18,6 +18,8 @@ public sealed class ApprovedDiscountService(PricingExceptionsDbContext database,
         await writeLock.Semaphore.WaitAsync(cancellationToken);
         try
         {
+            // Only the current revision can supply an effective discount. Historical approvals
+            // no longer apply after revised terms move the request back to Pending.
             return await (
                 from request in database.PricingExceptionRequests.AsNoTracking()
                 join revision in database.RequestRevisions.AsNoTracking()

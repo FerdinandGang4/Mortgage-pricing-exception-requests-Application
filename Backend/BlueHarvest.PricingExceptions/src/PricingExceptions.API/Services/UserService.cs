@@ -7,11 +7,13 @@ using PricingExceptions.API.Services.Interfaces;
 
 namespace PricingExceptions.API.Services;
 
+// Resolve identities and enforce stored roles even when called outside an HTTP controller.
 public sealed class UserService(PricingExceptionsDbContext database) : IUserService
 {
     public async Task<IReadOnlyList<User>> GetReviewersAsync(Guid actorId, CancellationToken cancellationToken = default)
     {
         await RequireRoleAsync(actorId, UserRole.RelationshipManager, cancellationToken);
+        // Only independent reviewers are offered for assignment by a relationship manager.
         return await database.Users.AsNoTracking()
             .Where(user => user.Role == UserRole.Reviewer && user.Id != actorId)
             .OrderBy(user => user.DisplayName).ToListAsync(cancellationToken);

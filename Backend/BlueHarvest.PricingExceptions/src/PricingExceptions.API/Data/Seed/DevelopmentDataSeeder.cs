@@ -8,6 +8,7 @@ public static class DevelopmentDataSeeder
 {
     public static async Task SeedAsync(PricingExceptionsDbContext database)
     {
+        // Stable IDs let Swagger and the frontend select the same demo identities on each start.
         var users = new[]
         {
             new User { Id = Guid.Parse("11111111-1111-1111-1111-111111111111"), DisplayName = "Demo Manager", Role = UserRole.RelationshipManager },

@@ -2,6 +2,7 @@ using PricingExceptions.API.Models.Enums;
 
 namespace PricingExceptions.API.Models.Entities;
 
+// An immutable outcome for one specific revision, including the reviewer's name at decision time.
 public sealed class ReviewDecision
 {
     public Guid Id { get; init; }
