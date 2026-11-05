@@ -35,6 +35,36 @@ ASPNETCORE_ENVIRONMENT=Development retains the existing demo users, demo header 
 
 The local Compose frontend explicitly builds with `VITE_ENABLE_DEMO_USERS=true` so the Select Demo User picker can switch between the seeded managers, reviewers, and Mortgage Process user. The Vite development server enables it automatically. Normal frontend production builds and direct Dockerfile builds default to disabling the picker and omitting `X-User-Id`. Do not enable this build flag for production deployments; the API independently rejects demo headers outside Development.
 
+## Multi-user demo
+
+Development startup seeds these identities idempotently. The original manager and reviewer IDs are retained, and their display names are updated. Existing request and decision name snapshots are preserved.
+
+| User | X-User-Id |
+| --- | --- |
+| James Wilson (Manager) | 11111111-1111-1111-1111-111111111111 |
+| Sarah Johnson (Manager) | 11111111-1111-1111-1111-111111111112 |
+| Michael Brown (Manager) | 11111111-1111-1111-1111-111111111113 |
+| David Miller (Reviewer) | 22222222-2222-2222-2222-222222222222 |
+| Emily Davis (Reviewer) | 22222222-2222-2222-2222-222222222223 |
+| Robert Taylor (Reviewer) | 22222222-2222-2222-2222-222222222224 |
+| Jennifer Anderson (Reviewer) | 22222222-2222-2222-2222-222222222225 |
+| Daniel Thomas (Reviewer) | 22222222-2222-2222-2222-222222222226 |
+| Demo Mortgage Process | 33333333-3333-3333-3333-333333333333 |
+
+Select James in the top-bar picker and create three requests with distinct mortgage application IDs. Assign David, Emily, and Robert respectively. Switch to each reviewer, select their request, and approve or decline with a review note. Only the assigned reviewer sees the review action; the API independently enforces this restriction. All known internal users retain the existing ability to read requests and history. The workspace tracks opened request references in browser storage; use Open request to find database requests in a fresh browser.
+
+From FrontEnd, run all isolated browser tests with `npm.cmd run test:e2e`. To test the three-request flow against running Compose instead:
+
+```powershell
+$env:E2E_BASE_URL='http://localhost:5173'
+npm.cmd run test:e2e -- --grep 'James assigns three requests'
+Remove-Item Env:E2E_BASE_URL
+```
+
+This deployment test creates three persistent demo requests. The normal suite uses isolated test servers and an InMemory database. Clear E2E_BASE_URL before running the entire isolated suite.
+
+Validated multi-user configuration: all 69 .NET tests and all 13 isolated browser tests passed. The three-request browser test also passed against Compose/PostgreSQL, along with the HTTP workflow smoke test. All nine seeded users resolved through `/users/me`, all five reviewers were returned for assignment, and restarting the backend left user, request, decision, and history counts unchanged.
+
 ## Test
 
 After Compose startup, run from the solution directory:
@@ -44,7 +74,7 @@ cd Backend/BlueHarvest.PricingExceptions
 dotnet test
 ```
 
-The 36 existing .NET tests use isolated InMemory stores. To exercise the real PostgreSQL-backed application, run the existing smoke test from the repository root:
+The 69 .NET tests use isolated InMemory stores. To exercise the real PostgreSQL-backed application, run the existing smoke test from the repository root:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File Backend/BlueHarvest.PricingExceptions/tests/Invoke-ApiSmokeTests.ps1 -BaseUrl http://localhost:5173
@@ -58,7 +88,7 @@ Verify persistence across full container removal and recreation:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File Backend/BlueHarvest.PricingExceptions/tests/Test-DockerPersistence.ps1
 ```
 
-This creates and approves a demo request, runs Compose down/up without deleting volumes, and verifies the request, revision, decision, history, and original retry response. All 36 .NET tests, PostgreSQL workflow smoke tests, and this persistence check passed for this configuration.
+This creates and approves a demo request, runs Compose down/up without deleting volumes, and verifies the request, revision, decision, history, and original retry response. All 69 .NET tests, PostgreSQL workflow smoke tests, and this persistence check passed for this configuration.
 
 ## Restart and persistence
 

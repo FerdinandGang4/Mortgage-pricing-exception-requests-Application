@@ -323,3 +323,55 @@ test('demo user picker exposes seeded users and refreshes attribution without ch
   await page.getByRole('button', { name: 'New request', exact: true }).click()
   await expect(page.getByLabel('Requester', { exact: true })).toHaveValue('Michael Brown (Manager)')
 })
+
+test('James assigns three requests to David Emily and Robert and each reviewer records their own decision', async ({ page }) => {
+  const reviewers = [
+    { id: '22222222-2222-2222-2222-222222222222', name: 'David Miller (Reviewer)', outcome: 'Approved' },
+    { id: '22222222-2222-2222-2222-222222222223', name: 'Emily Davis (Reviewer)', outcome: 'Declined' },
+    { id: '22222222-2222-2222-2222-222222222224', name: 'Robert Taylor (Reviewer)', outcome: 'Approved' },
+  ]
+  const created: { id: string; application: string; reviewer: typeof reviewers[number] }[] = []
+  await page.goto('/')
+  const picker = page.getByLabel('Select Demo User', { exact: true })
+  for (const reviewer of reviewers) {
+    await page.getByRole('button', { name: 'New request', exact: true }).click()
+    await expect(page.getByLabel('Requester', { exact: true })).toHaveValue('James Wilson (Manager)')
+    await expect(page.getByLabel('Assigned reviewer').locator('option')).toHaveCount(6)
+    await page.getByLabel('Assigned reviewer').selectOption(reviewer.id)
+    const application = crypto.randomUUID()
+    await page.getByLabel('Mortgage application ID').fill(application)
+    await page.getByLabel('Requested discount').fill('50')
+    await page.getByLabel('Supporting reason').fill('Three-request demo workflow for ' + reviewer.name)
+    const response = page.waitForResponse(response => response.request().method() === 'POST' && response.url().endsWith('/api/v1/pricing-exceptions'))
+    await page.getByRole('button', { name: 'Submit request', exact: true }).click()
+    const saved = await (await response).json()
+    created.push({ id: saved.id, application, reviewer })
+    await expect(page.getByRole('dialog')).not.toBeVisible()
+    await expect(page.locator('.detail-fields')).toContainText(reviewer.name)
+  }
+  await expect(page.locator('tbody tr')).toHaveCount(3)
+  for (const request of created) {
+    await picker.selectOption(request.reviewer.id)
+    await page.getByRole('button', { name: 'View request ' + request.id.slice(0, 8).toUpperCase(), exact: true }).click()
+    await page.getByRole('button', { name: 'Details', exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Review request', exact: true })).toBeVisible()
+    const another = created.find(other => other.id !== request.id)!
+    await page.getByRole('button', { name: 'View request ' + another.id.slice(0, 8).toUpperCase(), exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Review request', exact: true })).toHaveCount(0)
+    await page.getByRole('button', { name: 'View request ' + request.id.slice(0, 8).toUpperCase(), exact: true }).click()
+    await page.getByRole('button', { name: 'Review request', exact: true }).click()
+    if (request.reviewer.outcome === 'Declined') await page.getByRole('radio', { name: /Decline/ }).check()
+    await page.getByLabel('Review note').fill('Decision recorded by ' + request.reviewer.name)
+    await page.getByRole('button', { name: request.reviewer.outcome === 'Approved' ? 'Confirm approval' : 'Confirm decline', exact: true }).click()
+    await expect(page.getByRole('dialog')).not.toBeVisible()
+    await page.getByRole('button', { name: /^History/ }).click()
+    await expect(page.locator('.timeline li')).toHaveCount(2)
+    await expect(page.locator('.timeline')).toContainText('James Wilson (Manager)')
+    await expect(page.locator('.timeline')).toContainText(request.reviewer.name)
+    await expect(page.locator('.timeline')).toContainText('Decision recorded by ' + request.reviewer.name)
+  }
+  await picker.selectOption('11111111-1111-1111-1111-111111111111')
+  await expect(page.locator('tbody tr')).toHaveCount(3)
+  await expect(page.getByRole('cell', { name: 'Approved', exact: true })).toHaveCount(2)
+  await expect(page.getByRole('cell', { name: 'Declined', exact: true })).toHaveCount(1)
+})
