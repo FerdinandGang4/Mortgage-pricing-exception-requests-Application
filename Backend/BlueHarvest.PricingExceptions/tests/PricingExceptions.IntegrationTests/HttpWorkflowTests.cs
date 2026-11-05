@@ -94,6 +94,7 @@ public sealed class HttpWorkflowTests
         => new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment(environment);
+            builder.UseSetting("Database:Provider", "InMemory");
             builder.UseSetting("Database:Name", Guid.NewGuid().ToString());
         });
 

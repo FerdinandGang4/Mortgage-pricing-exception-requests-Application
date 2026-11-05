@@ -52,9 +52,15 @@ builder.Services.AddSingleton<InMemoryWriteLock>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IPricingExceptionService, PricingExceptionService>();
 builder.Services.AddScoped<IApprovedDiscountService, ApprovedDiscountService>();
-// InMemory keeps setup self-contained, but all workflow data is lost on shutdown.
+// Tests can explicitly select InMemory; application deployments use PostgreSQL.
 builder.Services.AddDbContext<PricingExceptionsDbContext>(options =>
-    options.UseInMemoryDatabase(builder.Configuration["Database:Name"] ?? "PricingExceptions"));
+{
+    if (builder.Configuration["Database:Provider"] == "InMemory")
+        options.UseInMemoryDatabase(builder.Configuration["Database:Name"] ?? "PricingExceptions");
+    else
+        options.UseNpgsql(builder.Configuration.GetConnectionString("PricingExceptions")
+            ?? throw new InvalidOperationException("ConnectionStrings:PricingExceptions is required for PostgreSQL."));
+});
 
 var app = builder.Build();
 app.UseExceptionHandler();
@@ -68,7 +74,10 @@ app.UseStatusCodePages(async context =>
 using (var scope = app.Services.CreateScope())
 {
     var database = scope.ServiceProvider.GetRequiredService<PricingExceptionsDbContext>();
-    await database.Database.EnsureCreatedAsync();
+    if (database.Database.IsRelational())
+        await database.Database.MigrateAsync();
+    else
+        await database.Database.EnsureCreatedAsync();
     if (app.Environment.IsDevelopment())
         await DevelopmentDataSeeder.SeedAsync(database);
 }

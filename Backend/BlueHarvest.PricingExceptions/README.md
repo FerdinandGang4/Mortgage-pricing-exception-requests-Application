@@ -6,9 +6,9 @@ ASP.NET Core controller-based API targeting .NET 10 for creating, independently 
 
 Models/Entities contains User, PricingExceptionRequest, RequestRevision, ReviewDecision, HistoryEntry, and IdempotencyRecord. Models/Enums contains RequestStatus, DecisionOutcome, and UserRole.
 
-These plain C# models describe the class diagram. Data/PricingExceptionsDbContext exposes all six entities and maps their relationships, including the composite revision key. Startup registers EF Core InMemory and initializes an empty database named PricingExceptions.
+These plain C# models describe the class diagram. Data/PricingExceptionsDbContext exposes all six entities and maps their relationships, including the composite revision key. Startup uses PostgreSQL and applies the checked-in EF Core migrations. See [Docker and PostgreSQL commands](../../DOCKER.md) for setup, persistence, connection settings, and migrations.
 
-Data is lost when the application stops. InMemory requires no database server, connection string, or migrations. It does not enforce relational foreign keys or unique indexes and does not provide database transactions; database-backed workflow guarantees will need a relational provider later.
+PostgreSQL stores application data in the Compose postgres_data volume, which survives ordinary container restarts and removal. Isolated automated tests explicitly select InMemory; those stores remain temporary and do not enforce relational constraints.
 
 Services and their interfaces are registered through dependency injection:
 
@@ -20,9 +20,9 @@ Services validate input, ownership, self-review restrictions, expected versions,
 
 Current demo policies: one request per application, discounts of 1–500 basis points, reasons up to 2000 characters, and revisions allowed after a decision. A revision makes the request Pending and withdraws the previous effective approval. All known internal users can read requests and history. These policies remain assumptions to confirm.
 
-InMemoryWriteLock coordinates service reads and writes within one application process. The history endpoint reads events, revisions, and decisions as one snapshot. SaveChanges rejects edits or deletion of historical revisions, decisions, history, and completed retry records. The lock is not a substitute for relational transactions or constraints and does not support multiple application instances. Writes use one SaveChanges call for state, history, and the retry record, but InMemory does not guarantee rollback after storage failures. The service owns changes within its DbContext scope; callers must not stage unrelated changes in that scope.
+InMemoryWriteLock retains its original name and coordinates service reads and writes within one application process. The history endpoint reads its collections under that lock. SaveChanges rejects edits or deletion of historical revisions, decisions, history, and completed retry records. PostgreSQL uses a transaction for each SaveChanges call, including state, history, and the retry record. The process lock does not coordinate multiple API instances; cross-instance workflow guarantees need additional database constraints and transaction design. The service owns changes within its DbContext scope; callers must not stage unrelated changes in that scope.
 
-The selected InMemory storage differs from the SQLite proposal in the design documents. This is an explicit exercise trade-off, not a claim of implementing SQLite durability or transaction semantics.
+PostgreSQL replaces the earlier InMemory application storage and the SQLite proposal in the original design documents. Those historical design documents describe earlier implementation choices.
 
 Observability/PricingExceptionsTelemetry exposes ActivitySource and Meter hooks named BlueHarvest.PricingExceptions, with mutation, replay, and conflict counters tagged only by operation type. No customer reasons or identifiers are added to telemetry tags. Exporters are not configured.
 
@@ -136,7 +136,7 @@ dotnet run --project src/PricingExceptions.API --launch-profile http
 
 Open http://localhost:5267/swagger in Development. Visual Studio launch profiles open Swagger automatically; terminal launches require opening the URL manually.
 
-Stop the API before rebuilding if Windows reports a locked executable. Restarting resets all InMemory workflow data and recreates the three demo users.
+Stop the API before rebuilding if Windows reports a locked executable. PostgreSQL workflow data survives restart. Development startup adds any missing demo users without clearing existing records.
 
 ## Design references
 

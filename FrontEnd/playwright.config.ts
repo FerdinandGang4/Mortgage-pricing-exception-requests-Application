@@ -15,7 +15,7 @@ export default defineConfig({
   webServer: [
     {
       command: 'dotnet ../Backend/BlueHarvest.PricingExceptions/src/PricingExceptions.API/bin/Debug/net10.0/PricingExceptions.API.dll --urls http://localhost:5270',
-      env: { ASPNETCORE_ENVIRONMENT: 'Development' },
+      env: { ASPNETCORE_ENVIRONMENT: 'Development', Database__Provider: 'InMemory' },
       url: 'http://localhost:5270/openapi/v1.json',
       timeout: 60_000,
       reuseExistingServer: !process.env.CI,

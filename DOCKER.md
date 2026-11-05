@@ -1,65 +1,112 @@
-# Run with Docker
+# Docker and PostgreSQL
 
-Prerequisites: Docker Desktop running with Linux containers. For host-side tests, install the .NET 10 SDK. No host Node.js installation is needed to run the containers.
+Prerequisites: Docker Desktop using Linux containers. Install the .NET 10 SDK for host tests and EF migration commands. Node.js is not required to run the containers.
 
-## Build and start
+## Build and run
 
-Run from the repository root, which contains `compose.yaml`:
+From the repository root (the folder containing compose.yaml):
 
 ```powershell
 docker compose up -d --build
 docker compose ps
-docker compose logs --tail 50 backend frontend
+docker compose logs --tail 50 backend postgres frontend
 ```
 
 Frontend: http://localhost:5173
 
-API Swagger: http://localhost:5267/swagger
+Swagger: http://localhost:5267/swagger
 
-The frontend is compiled and served by Nginx. Nginx proxies `/api` and `/openapi` to the backend over the Compose network. The backend listens on port 8080 inside its container. Both published ports bind to the host loopback interface.
+Compose starts PostgreSQL 17, waits for its readiness check, and starts the API. The API applies checked-in EF Core migrations before serving requests. The frontend is compiled and served by Nginx, which proxies API calls to backend:8080. Stop any host development servers using ports 5173, 5267, or 5432 first.
+
+## Configuration
+
+Defaults work for a local demonstration. Optional root .env settings:
+
+```dotenv
+BACKEND_PORT=5267
+FRONTEND_PORT=5173
+POSTGRES_PORT=5432
+POSTGRES_PASSWORD=local-demo-password
+```
+
+Compose passes ConnectionStrings__PricingExceptions to the API using Host=postgres, database pricing_exceptions, and username pricing. All published ports bind to localhost. The sample password is only a local development default. Changing POSTGRES_PASSWORD after the database volume is initialized does not change the stored database password; rotate it in PostgreSQL and update the application connection string together.
+
+ASPNETCORE_ENVIRONMENT=Development retains the existing demo users, demo header authentication, and Swagger. No authentication implementation was added.
 
 ## Test
 
-From the solution directory:
+After Compose startup, run from the solution directory:
 
 ```powershell
 cd Backend/BlueHarvest.PricingExceptions
 dotnet test
 ```
 
-From the repository root, check the running container through the frontend proxy:
+The 36 existing .NET tests use isolated InMemory stores. To exercise the real PostgreSQL-backed application, run the existing smoke test from the repository root:
 
 ```powershell
-Invoke-RestMethod http://localhost:5173/api/v1/users/me -Headers @{'X-User-Id'='11111111-1111-1111-1111-111111111111'}
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File Backend/BlueHarvest.PricingExceptions/tests/Invoke-ApiSmokeTests.ps1 -BaseUrl http://localhost:5173
 ```
 
-## Restart, stop, and rebuild
+This checks creation, retry replay, conflicts, approval, effective discount lookup, revisions, history, validation, existing access rules, and Swagger. It creates demo records in PostgreSQL.
 
-Run from the repository root:
+Verify persistence across full container removal and recreation:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File Backend/BlueHarvest.PricingExceptions/tests/Test-DockerPersistence.ps1
+```
+
+This creates and approves a demo request, runs Compose down/up without deleting volumes, and verifies the request, revision, decision, history, and original retry response. All 36 .NET tests, PostgreSQL workflow smoke tests, and this persistence check passed for this configuration.
+
+## Restart and persistence
+
+From the repository root:
 
 ```powershell
 docker compose restart
 docker compose down
 docker compose up -d
-# After source changes:
+# Rebuild after source changes:
 docker compose up -d --build
 ```
 
-`restart` reuses the existing image. Rebuild to include code changes. Stop host development servers on ports 5173 and 5267 before starting Compose.
+The postgres_data named volume retains requests, revisions, decisions, users, history, and retry records across restarts, image rebuilds, and ordinary docker compose down/up. The previous InMemory store cannot be migrated because it had no durable data. Do not use docker compose down -v unless you intend to delete the database volume and its contents.
 
-## Environment variables
+## EF Core migrations
 
-Compose defaults are usable without an `.env` file. Override the published ports in a root `.env` file if needed:
+From the repository root, restore the pinned local tool:
 
-```dotenv
-BACKEND_PORT=5267
-FRONTEND_PORT=5173
+```powershell
+dotnet tool restore
 ```
 
-The backend receives `ASPNETCORE_ENVIRONMENT=Development`, `ASPNETCORE_HTTP_PORTS=8080`, and `Database__Name=PricingExceptions`. Development enables Swagger and seeds the existing demo users. Existing demo authentication is preserved; no new authentication is implemented.
+The API automatically applies migrations on startup. To apply them explicitly from the host, start PostgreSQL first:
 
-## Database provider limitation
+```powershell
+docker compose up -d postgres
+dotnet ef database update --project Backend/BlueHarvest.PricingExceptions/src/PricingExceptions.API
+```
 
-The existing provider is `Microsoft.EntityFrameworkCore.InMemory`. It has no database file or database server: a Docker volume cannot make it persistent. Requests, history, and retry records are lost when the backend process restarts. `EnsureCreatedAsync` initializes this store; EF Core relational migrations are unsupported by this provider.
+The default host connection in appsettings.json uses localhost:5432 and the sample development credentials. If your settings differ, set the connection string before using EF or running the API:
 
-Persistent storage and EF migrations require a change to a relational provider. That provider change is pending confirmation and is not part of the current container configuration. No volume is presented as database persistence because mounting one would not preserve the InMemory store.
+```powershell
+$env:ConnectionStrings__PricingExceptions='Host=localhost;Port=5432;Database=pricing_exceptions;Username=pricing;Password=your-password'
+```
+
+After changing the EF model, generate and inspect a new migration, then rebuild:
+
+```powershell
+dotnet ef migrations add DescribeSchemaChange --project Backend/BlueHarvest.PricingExceptions/src/PricingExceptions.API --output-dir Data/Migrations
+docker compose up -d --build
+```
+
+## Run the API outside Docker
+
+Start only the database, then run the existing launch profile:
+
+```powershell
+docker compose up -d postgres
+dotnet run --project Backend/BlueHarvest.PricingExceptions/src/PricingExceptions.API --launch-profile http
+```
+
+Do not also run the Compose backend on port 5267. Database__Provider=InMemory remains available explicitly for isolated tests; normal application startup uses PostgreSQL.
