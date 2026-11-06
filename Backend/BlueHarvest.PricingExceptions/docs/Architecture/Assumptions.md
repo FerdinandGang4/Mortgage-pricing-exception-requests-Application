@@ -29,27 +29,27 @@ This document records the policies and exercise trade-offs used by the current i
 - All POST operations require a non-blank Idempotency-Key of at most 200 characters. Keys are scoped to the actor, operation, and target request where applicable.
 - A successful operation stores its service result. A matching retry returns that original result, even if the request has subsequently changed. A different payload under the same scoped key returns 409. Current identity and role checks still apply before replay.
 - Retry payload comparison uses serialized typed input before reason trimming. Changing reason whitespace can therefore conflict under the same key. Failed operations are not stored as completed retries.
-- No explicit idempotency expiry is implemented. Retry records live only as long as the InMemory store; restart removes them, so retries across restarts are not protected.
+- No explicit idempotency expiry is implemented. PostgreSQL persists retry records across ordinary container restarts and recreation while the database volume is retained. Deleting the volume or its records removes that protection.
 
 ## Local execution trade-offs
 
 ### Storage and concurrency
 
-EF Core InMemory is an explicit exercise choice for simple local execution. Requests, users, decisions, history, and retry records disappear when the application process stops. There is no database server, migration setup, or durable audit retention.
+The application uses EF Core with PostgreSQL. Docker Compose supplies the database and a persistent named volume, and the API applies checked-in EF migrations during startup. Requests, users, decisions, history, and retry records survive ordinary restarts and Compose down/up while that volume is retained. Isolated automated tests explicitly select temporary InMemory stores.
 
-A singleton lock coordinates workflow reads and writes within one API process. The current-request lookup, combined history snapshot, and approved-discount query use the same lock as mutations, preventing service writes from interleaving with those reads. State changes, history, and retry records are submitted in one SaveChanges call. Expected versions and role checks provide application-level safeguards, but InMemory does not supply relational foreign-key enforcement, unique-index enforcement, or database transactions. Partial storage failures do not have guaranteed rollback.
+A singleton lock coordinates workflow reads and writes within one API process. The current-request lookup, combined history snapshot, and approved-discount query use the same lock as mutations. State changes, history, and retry records are submitted in one SaveChanges call using a PostgreSQL transaction. The revision primary key and decision-per-revision unique index are database constraints; one request per application and actor/scope/key retry uniqueness currently remain service checks without unique database indexes. Reads are not wrapped in a cross-instance snapshot transaction.
 
-This setup assumes a single application instance and that workflow access goes through the registered services. It is not suitable for distributed writers or production persistence. The DbContext rejects changes or deletion of submitted revisions, decisions, history entries, and completed retry records, in addition to the service preserving them. This is application-level protection, not database-level tamper protection.
+This setup assumes a single API instance and that workflow access goes through the registered services. The lock does not coordinate distributed writers. The DbContext rejects changes or deletion of submitted revisions, decisions, history entries, and completed retry records. This is application-level protection, not database-level tamper protection; direct SQL can bypass it. A persistent volume is not a backup or recovery plan.
 
 ### Identity and demo data
 
 Development-only authentication accepts X-User-Id for a known seeded user and derives identity and role claims from the stored record. Anyone with a demo ID can act as that user; this is identity simulation, not secure authentication. Actor IDs are not accepted in business request bodies.
 
-The application seeds a manager, reviewer, and mortgage-process identity in Development. It does not seed mortgage application records; any non-empty application GUID is accepted as an external reference. The demo header is rejected outside Development, and no alternative production authentication provider is configured yet. Swagger is exposed only in Development.
+The application seeds three managers, five reviewers, and one mortgage-process identity in Development. Stable IDs and idempotent seeding preserve existing request references and historical name snapshots. It does not seed mortgage application records; any non-empty application GUID is accepted as an external reference. The demo header is rejected outside Development, and no alternative production identity provider is configured. Swagger is exposed only in Development. The React picker is enabled for local development and explicitly opted into by the local Docker build; normal production builds disable it.
 
 ### Deliberate exclusions
 
-The service does not calculate mortgage rates, originate applications, assess affordability, perform underwriting, send notifications, or manage a complete mortgage lifecycle. A user interface is not included in the current API implementation; the assignment lists it as bonus work. There is no automated approval agent.
+The service does not calculate mortgage rates, originate applications, assess affordability, perform underwriting, send notifications, or manage a complete mortgage lifecycle. A React frontend implements the assignment's UI bonus. AI supports development and validation, not automated mortgage approval decisions.
 
 ## Decisions to confirm before production
 
@@ -57,12 +57,12 @@ The service does not calculate mortgage rates, originate applications, assess af
 2. Confirm whether approved terms can be revised, whether approvals expire, and how downstream consumption or revocation works.
 3. Integrate application existence and eligibility checks with the mortgage system.
 4. Replace demo authentication with a trusted identity provider and define multi-role and delegated permissions.
-5. Adopt durable relational storage with transactions, constraints, migrations, backup, and recovery; validate concurrent writers and rollback behavior against that provider.
+5. Strengthen the existing PostgreSQL design for concurrent writers across instances, coordinate production migration rollouts, and test backup/restore and failure recovery.
 6. Define audit retention, privacy controls, retry-record expiry, and protection of stored response data.
 7. Establish production deployment, monitoring, operational support, and any reliable downstream handoff needed.
 
 ## Evidence and limits
 
-The repository contains automated service and HTTP integration tests plus a live HTTP smoke-test script. Tests cover the main workflows, reapproval, concurrent retry and decision scenarios, review-versus-revision conflict, historical record protection, identity and role failures, malformed inputs, error responses, and Swagger. Passing those checks demonstrates the tested local behavior; it does not establish production security, durable retry safety, relational atomicity, or exhaustive race-condition coverage.
+Previously recorded validation includes 69 .NET cases, 13 browser tests, a live HTTP smoke test, a three-request multi-reviewer browser flow against PostgreSQL, and persistence/reseeding checks. Isolated tests use InMemory; live checks exercise actual PostgreSQL. Passing these checks demonstrates the tested local behaviour, not production security or exhaustive multi-instance race coverage. Rerun tests against the intended submission commit.
 
-References: the assignment PDF and solution design in this directory, the entity diagram in ../EntityClassDiagram, and sequence diagrams in ../SequenceDiagrams. Where a proposal in those documents differs from the current code, this document describes the implemented exercise behavior.
+References: the original assignment PDF under Documentation, the current diagram sources under ../CurrentImplementation, and the latest Word/PDF documents indexed in ../README.md. These assumptions describe the current code rather than earlier storage proposals.

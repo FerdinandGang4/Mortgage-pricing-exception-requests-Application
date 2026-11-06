@@ -1,6 +1,6 @@
 param(
     [string]$Source = (Join-Path $PSScriptRoot '../docs/Architecture/Assumptions.md'),
-    [string]$Output = (Join-Path $PSScriptRoot '../../../Documentation/Assumptions.docx')
+    [string]$Output = (Join-Path $PSScriptRoot '../docs/Assumptions.docx')
 )
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression

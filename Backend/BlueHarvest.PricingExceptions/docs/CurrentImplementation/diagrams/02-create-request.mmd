@@ -1,0 +1,31 @@
+sequenceDiagram
+    autonumber
+    actor M as Manager
+    participant UI as React form
+    participant C as Controller
+    participant S as PricingExceptionService
+    participant W as Write wrapper
+    participant D as EF / PostgreSQL
+    M->>UI: Enter application GUID, bps, reason, reviewer
+    UI->>C: POST /api/v1/pricing-exceptions + identity + key
+    Note over C,S: Authentication, role and DTO<br/>validation occur before action<br/>logic
+    C->>S: CreateAsync(... actorId, idempotencyKey)
+    S->>D: RequireRoleAsync(RelationshipManager)
+    S->>W: ExecuteWriteAsync(actor, create, key, payload)
+    Note over W,D: Shared write wrapper handles<br/>lock and retries (diagram 03)
+    W->>S: Run operation callback for a new key
+    S->>S: Validate bps, reason and non-empty application GUID
+    S->>D: Find independent Reviewer and check application duplicate
+    alt Invalid input / reviewer or duplicate application
+        S-->>C: BusinessRuleException / ConflictException
+        C-->>UI: Global handler returns 400 / 409 Problem Details
+    else Valid new request
+        S->>D: Stage Pending request (version 1, revision 1)
+        S->>D: Stage terms snapshot and Created history
+        S-->>W: Result with requester / assigned-reviewer name snapshots
+        W->>D: Add retry result, SaveChangesAsync
+        D-->>W: Transaction committed
+        W-->>S: Saved result
+        S-->>C: PricingExceptionResult
+        C-->>UI: 201 DTO + Location pointing to request GET
+    end

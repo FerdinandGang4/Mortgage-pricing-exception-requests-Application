@@ -1,18 +1,26 @@
-# Mortgage-pricing-exception-requests-Application
-A service that lets internal users create a pricing exception request, review it, and retrieve its outcome.
+# Mortgage pricing exception requests
 
-For container build, run, test, and restart commands, see [Docker instructions](DOCKER.md).
+An internal application for creating mortgage pricing exception requests, independently reviewing them, and retrieving approved discounts with preserved history.
 
-Start with the [delivery package and inventory](Deliverables/README.md) for setup instructions, the demonstration guide, submission documents, and the final checklist.
+## Current documentation
 
-The backend solution, run instructions, and design documents are in [Backend/BlueHarvest.PricingExceptions](Backend/BlueHarvest.PricingExceptions/README.md).
+The [backend documentation index](Backend/BlueHarvest.PricingExceptions/docs/README.md) contains the latest entity diagram, sequence diagrams, assumptions, presentation, and local Docker instructions. Only one current copy of each document is maintained.
 
-From the repository root:
+- [Run locally: Word guide](Backend/BlueHarvest.PricingExceptions/docs/BlueHarvest_Docker_Clear_Instructions.docx)
+- [Docker commands and configuration](DOCKER.md)
+- [Latest presentation](Backend/BlueHarvest.PricingExceptions/docs/BlueHarvest_Assignment_Presentation.pptx)
+- [Assumptions and reasons](Backend/BlueHarvest.PricingExceptions/docs/Assumptions.docx)
+- [Original assignment](<Documentation/Blue Harvest Agentic SDLC Engineering Assignment.pdf>)
+
+## Start with Docker
+
+From the repository root containing compose.yaml:
 
 ```powershell
-dotnet run --project Backend/BlueHarvest.PricingExceptions/src/PricingExceptions.API --launch-profile http
+docker compose up --build -d
+docker compose ps
 ```
 
-Start PostgreSQL first with `docker compose up -d postgres`. Open http://localhost:5267/swagger in Development. The API uses PostgreSQL and applies EF Core migrations on startup. See [Docker instructions](DOCKER.md) for persistent storage and connection settings, and the backend README for demo users and example requests.
+Frontend: http://localhost:5173. Swagger: http://localhost:5267/swagger. PostgreSQL data is retained in the named volume during ordinary restarts and Compose down/up.
 
-The [Word assumptions document](Documentation/Assumptions.docx), [requirements coverage and submission notes](Backend/BlueHarvest.PricingExceptions/docs/Architecture/SubmissionNotes.md), and [AI development record](Backend/BlueHarvest.PricingExceptions/docs/Architecture/AiDevelopmentLog.md) describe the exercise policies, verification, and production limitations.
+For source details, see the [backend README](Backend/BlueHarvest.PricingExceptions/README.md), [frontend README](FrontEnd/README.md), and [deliverables inventory](Deliverables/README.md).

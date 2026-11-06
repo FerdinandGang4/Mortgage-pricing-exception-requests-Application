@@ -1,0 +1,49 @@
+erDiagram
+    direction LR
+    User {
+        Guid Id PK
+        UserRole Role
+    }
+    PricingExceptionRequest {
+        Guid Id PK
+        Guid MortgageApplicationId
+        Guid CreatedByUserId FK
+        Guid AssignedReviewerId FK
+        RequestStatus Status
+        int CurrentRevisionNumber
+        long Version
+    }
+    RequestRevision {
+        Guid RequestId PK,FK
+        int RevisionNumber PK
+        Guid SubmittedByUserId FK
+    }
+    ReviewDecision {
+        Guid Id PK
+        Guid RequestId FK
+        int RevisionNumber FK
+        Guid ReviewedByUserId FK
+    }
+    HistoryEntry {
+        Guid Id PK
+        Guid RequestId FK
+        int RevisionNumber FK
+        Guid ActorUserId FK
+    }
+    IdempotencyRecord {
+        Guid Id PK
+        Guid ActorUserId FK
+        Guid RequestId FK "nullable"
+    }
+
+    User ||--o{ PricingExceptionRequest : "CreatedByUserId"
+    User ||--o{ PricingExceptionRequest : "AssignedReviewerId"
+    User ||--o{ RequestRevision : "SubmittedByUserId"
+    User ||--o{ ReviewDecision : "ReviewedByUserId"
+    User ||--o{ HistoryEntry : "ActorUserId"
+    User ||--o{ IdempotencyRecord : "ActorUserId"
+    PricingExceptionRequest ||--o{ RequestRevision : "RequestId"
+    PricingExceptionRequest ||--o{ HistoryEntry : "RequestId"
+    PricingExceptionRequest |o--o{ IdempotencyRecord : "nullable RequestId"
+    RequestRevision ||--o| ReviewDecision : "RequestId + RevisionNumber"
+    RequestRevision ||--o{ HistoryEntry : "RequestId + RevisionNumber"

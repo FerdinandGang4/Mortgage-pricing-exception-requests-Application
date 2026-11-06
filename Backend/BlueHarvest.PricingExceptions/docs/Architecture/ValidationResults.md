@@ -1,32 +1,18 @@
-# Local validation results
+# Validation results and limits
 
-Validation date: 3 November 2026.
+Previously recorded local checks for the current multi-user PostgreSQL implementation:
 
-## Release configuration
+| Check | Recorded result |
+| --- | --- |
+| .NET solution suite | 69 passed: 24 unit cases and 45 HTTP integration cases |
+| Isolated Playwright suite | 13 passed, including user switching and the three-request reviewer flow |
+| Browser flow against Docker/PostgreSQL | James creates three requests; David, Emily and Robert record their decisions successfully |
+| Live HTTP smoke script | Creation, replay/conflict handling, approval, discount lookup, revision, history, input validation and existing access rules passed |
+| Persistence test | Request, revision, decision, history and original retry response survived Compose down/up without deleting volumes |
+| Repeated seed after backend restart | Nine users remained, with request, decision and history counts unchanged |
 
-Command, from the repository root:
+These are prior results, not a claim that tests were rerun during documentation cleanup. Reproduce the checks using the [Word run instructions](../BlueHarvest_Docker_Clear_Instructions.docx) or repository-root DOCKER.md.
 
-```powershell
-dotnet test Backend/BlueHarvest.PricingExceptions/BlueHarvest.PricingExceptions.slnx --configuration Release --no-restore --logger trx --results-directory Backend/BlueHarvest.PricingExceptions/TestResults
-```
+The isolated .NET and browser suites explicitly use InMemory and do not prove PostgreSQL guarantees. Deployment and persistence checks exercise PostgreSQL. Passing tests does not establish production authentication, full failure coverage, distributed concurrency safety, regulatory compliance, or remote CI execution.
 
-Result: 27 passed, 0 failed, 0 skipped.
-
-| Suite | Passed | Scope |
-| --- | --- | --- |
-| PricingExceptions.UnitTests | 18 | Service workflow, terms validation, history, retries, roles, version conflicts, competing commands, cancellation and historical record protection |
-| PricingExceptions.IntegrationTests | 9 | ASP.NET Core HTTP pipeline, create/approve/revise/reapprove, decline, exact retry response, input errors, identity/role failures, Swagger and disabled Development identity in Production |
-
-The solution compiled in Release configuration without reported compiler warnings or errors in this run. TRX files are generated under TestResults and ignored by Git.
-
-The assumptions Word document was regenerated from Markdown and checked as an Open XML package: all package XML parts parsed successfully, with 73 paragraphs and one assumptions table. This verifies package structure and content, not a visual rendering in Microsoft Word.
-
-The CI workflow has been added but has not been executed remotely during this session. The local tests use EF Core InMemory and do not prove relational constraints, rollback after storage failures, or persistent retries across restarts.
-
-## Fresh local checkout verification
-
-The committed application source at b36449a was cloned into a separate temporary directory without existing build outputs. Restore succeeded with NuGet access, the Release build completed with 0 warnings and 0 errors, and all 27 tests passed (18 service, 9 HTTP integration).
-
-The cloned API then started in Development on port 5268. Its live smoke-test script passed against that port, covering create, replay, conflicting key reuse, approval, approved-discount retrieval, revision, history, validation, authentication, authorization, Swagger and OpenAPI.
-
-This validates the committed application source independently of the workspace's build outputs. The delivery directory and refreshed documentation are new working-tree changes prepared after that source commit. No new commit or remote CI run was created by this verification.
+Documentation was validated separately by rendering diagram sources and checking generated Word/PDF/PowerPoint artifacts. Current artifacts are indexed in [backend docs](../README.md); older copied reports and exports have been removed.

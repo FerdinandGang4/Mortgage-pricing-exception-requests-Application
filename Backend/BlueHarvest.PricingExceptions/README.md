@@ -1,5 +1,7 @@
 # Blue Harvest Pricing Exceptions
 
+See the [current documentation index](docs/README.md) for the latest entity diagram, sequence diagrams, assumptions, presentation, and local Docker Word guide.
+
 ASP.NET Core controller-based API targeting .NET 10 for creating, independently reviewing, and retrieving mortgage pricing exceptions. It runs locally without private infrastructure or paid services.
 
 ## Implementation
@@ -140,9 +142,9 @@ Stop the API before rebuilding if Windows reports a locked executable. PostgreSQ
 
 ## Design references
 
-See [Assumptions and scope decisions](docs/Architecture/Assumptions.md) for implemented business policies, InMemory and demo-authentication trade-offs, and decisions requiring stakeholder confirmation.
+See [Assumptions and scope decisions](docs/Architecture/Assumptions.md) for implemented business policies, PostgreSQL and demo-authentication trade-offs, and decisions requiring stakeholder confirmation.
 
-The [Word assumptions document](../../Documentation/Assumptions.docx) is generated from the same Markdown source. To regenerate it from this directory:
+The [Word assumptions document](docs/Assumptions.docx) is generated from the same Markdown source. To regenerate it from this directory:
 
 ```powershell
 ./tools/Export-AssumptionsDocument.ps1

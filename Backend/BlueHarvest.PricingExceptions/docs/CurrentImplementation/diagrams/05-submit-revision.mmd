@@ -1,0 +1,24 @@
+sequenceDiagram
+    autonumber
+    actor M as Original manager
+    participant C as Controller
+    participant S as PricingExceptionService
+    participant W as Write wrapper
+    participant D as EF / PostgreSQL
+    M->>C: POST /api/v1/pricing-exceptions/{id}/revisions
+    Note over M,C: bps, reason, expectedVersion,<br/>expectedRevisionNumber, key
+    C->>S: SubmitRevisionAsync(... actorId)
+    S->>D: RequireRoleAsync(RelationshipManager)
+    S->>W: ExecuteWriteAsync(revise:id, payload)
+    W->>S: New-key callback after lock / replay lookup
+    S->>S: Validate terms
+    S->>D: Find tracked request (404 if missing)
+    S->>S: Require creator (403), match version and revision (409)
+    S->>D: Increment revision and version, set Pending and UTC update time
+    S->>D: Stage new immutable terms and Revised history
+    Note over S,D: Assigned reviewer unchanged,<br/>old decisions and revisions<br/>retained
+    S-->>W: Result for new revision (no decision)
+    W->>D: Stage retry result and SaveChangesAsync
+    W-->>C: Result via service
+    C-->>M: 201 response DTO + request Location
+    Note over M,D: Discount lookup now returns<br/>404 until the new revision is<br/>approved
