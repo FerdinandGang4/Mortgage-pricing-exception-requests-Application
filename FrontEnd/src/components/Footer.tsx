@@ -6,6 +6,10 @@ export function Footer({ year }: { year: number }) {
       <div className="footer-credit">
         <span className="footer-product">Blue Harvest <span className="footer-separator">/</span> Pricing Exceptions</span>
         <span className="developer-credit">Developed by <strong>Gang Ferdinand Dinga</strong></span>
+        <address className="developer-contact">
+          <a href="tel:+31626357541">Phone: +31626357541</a>
+          <a href="mailto:dingaferdi2024@gmail.com">Email: dingaferdi2024@gmail.com</a>
+        </address>
       </div>
       <div className="footer-links">
         <span className="footer-copyright">© {year} · Internal workspace</span>

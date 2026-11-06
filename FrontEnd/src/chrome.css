@@ -35,6 +35,11 @@
 .footer-separator { padding: 0 7px; color: #c4a6e3; font-weight: 400; }
 .developer-credit { font-size: 11px; color: #dfd0ef; }
 .developer-credit strong { color: #fff; font-weight: 600; }
+.footer-credit { min-width: 0; }
+.developer-contact { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0; font-style: normal; font-size: 11px; line-height: 1.8; }
+.developer-contact a { color: #dfd0ef; text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
+.developer-contact a:hover { color: #fff; }
+.developer-contact a:focus-visible { outline: 3px solid #edccff; outline-offset: 3px; border-radius: 2px; }
 .footer-links { display: flex; align-items: center; gap: 20px; }
 .footer-copyright { color: #d5c4e8; font-size: 10px; white-space: nowrap; }
 .repository-link {
