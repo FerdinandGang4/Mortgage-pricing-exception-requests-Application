@@ -23,7 +23,7 @@ export function RequestDetails({ request, persona, onRevise, onReview, onCopy, h
     })
     return () => controller.abort()
   }, [request, persona.id])
-  if (!request) return <section className="panel detail-panel"><div className="panel-heading"><h2>Request details</h2><Icon name="file" size={19}/></div><EmptyState title="The detail is in the decision">Select a request to inspect its terms, review its history, or take the next step.</EmptyState><div className="detail-assurance"><Icon name="shield" size={18}/><p>Approvals are always tied to the exact terms reviewed.</p></div></section>
+  if (!request) return <section className="panel detail-panel"><div className="panel-heading"><h2>Pricing Exception Details</h2><Icon name="file" size={19}/></div><EmptyState title="The detail is in the decision">Select a request to inspect its terms, review its history, or take the next step.</EmptyState><div className="detail-assurance"><Icon name="shield" size={18}/><p>Approvals are always tied to the exact terms reviewed.</p></div></section>
   const own = persona.id === request.createdByUserId
   return <section className={'panel detail-panel ' + (historyOnly ? 'history-wide' : '')}>
     <div className="panel-heading"><div><span className="eyebrow">PRICING EXCEPTION</span><h2>PE-{shortId(request.id)}</h2></div><button className="icon-button" aria-label="Copy request ID" title="Copy full request ID" onClick={() => onCopy(request.id)}><Icon name="copy" size={17}/></button></div>

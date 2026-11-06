@@ -56,7 +56,7 @@ Create a request as the manager. Select it, switch to the reviewer, review it, t
 
 The header sun/moon button switches the entire workspace between light and dark mode. The selected theme is stored under `blueharvest.theme` and restored on reload; switching still works when browser storage is unavailable. Shared semantic colors live in `src/theme.css`, including surfaces, controls, statuses, purple accents, and application chrome. The initial theme is light.
 
-The Open request dropdown uses GET /api/v1/pricing-exceptions to list all existing backend requests, including requests not previously opened in this browser. The main workspace remembers up to 100 request IDs created or opened in the current browser and reloads their current details from the API. Dashboard totals describe that workspace, not all backend requests. Use Open request in another browser to browse and select any existing request.
+The Find Request dropdown uses GET /api/v1/pricing-exceptions to list all existing backend requests, including requests not previously opened in this browser. The main workspace remembers up to 100 request IDs created or opened in the current browser and reloads their current details from the API. Dashboard totals describe that workspace, not all backend requests. Use Find Request in another browser to browse and select any existing request.
 
 Only request IDs are stored in localStorage; supporting reasons and decision details are read from the backend. Unknown IDs are removed during refresh, for example after the InMemory backend restarts. The workspace still functions when browser storage is unavailable.
 

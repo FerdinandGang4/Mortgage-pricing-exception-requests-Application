@@ -36,7 +36,7 @@ export function RequestDetailsDialog({ persona, onClose, onSuccess }: { persona:
     finally { setBusy(false) }
   }
 
-  return <Modal title="Open an existing request" subtitle="Choose from all existing pricing exception requests." onClose={onClose} busy={busy}>
+  return <Modal title="Find an existing request" subtitle="Choose from all existing pricing exception requests." onClose={onClose} busy={busy}>
     <form className="dialog-form" onSubmit={submit}>
       <ErrorMessage message={error || loadError}/>
       {loadError && <button type="button" className="text-button" onClick={() => { setError(''); setAttempt(value => value + 1) }}>Retry loading requests</button>}
@@ -57,7 +57,7 @@ export function RequestDetailsDialog({ persona, onClose, onSuccess }: { persona:
       </div>}
       <div className="modal-actions">
         <button type="button" className="button secondary" disabled={busy} onClick={onClose}>Cancel</button>
-        <button className="button primary" type="submit" disabled={busy || loading || !selected}>{busy ? 'Opening…' : 'Open request'}</button>
+        <button className="button primary" type="submit" disabled={busy || loading || !selected}>{busy ? 'Opening…' : 'Find Request'}</button>
       </div>
     </form>
   </Modal>

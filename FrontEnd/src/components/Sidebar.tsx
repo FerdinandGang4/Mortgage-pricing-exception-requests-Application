@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import type { View } from '../types'
 import { Icon } from './Icon'
 
@@ -22,7 +23,7 @@ export function Sidebar({ view, onView, pending, open, onClose }: { view: View; 
       <a className="brand" href="#" onClick={event => { event.preventDefault(); navigate('requests') }}>
         <span className="brand-mark"><span/><span/><span/></span><span>blue harvest<span className="brand-subtitle">LENDING WORKSPACE</span></span>
       </a>
-      <div className="workspace-label"><span className="workspace-symbol">BH</span><div>Mortgage operations<small>Internal workspace</small></div><span className="workspace-dot"/></div>
+      <div className="workspace-label"><span className="workspace-symbol">BH</span><div>Mortgage Management<small>Internal workspace</small></div><span className="workspace-dot"/></div>
       <p className="nav-label">WORKSPACE</p>
       <nav aria-label="Main navigation">
         <button className={view === 'requests' ? 'nav-item active' : 'nav-item'} onClick={() => navigate('requests')} aria-current={view === 'requests' ? 'page' : undefined}><Icon name="requests"/><span>Pricing exceptions</span>{pending > 0 && <span className="nav-count">{pending}</span>}</button>
@@ -33,4 +34,3 @@ export function Sidebar({ view, onView, pending, open, onClose }: { view: View; 
     </aside>
   </>
 }
-import { useEffect, useState } from 'react'

@@ -100,7 +100,7 @@ for (const theme of ['light', 'dark']) {
     await expect(page.locator('.history-events')).toBeVisible()
     await expectReadable(page, '.history-events p')
     await page.screenshot({ path: 'test-results/theme-' + theme + '-desktop.png', fullPage: true })
-    await page.getByRole('button', { name: 'New request', exact: true }).click()
+    await page.getByRole('button', { name: 'Create Request', exact: true }).click()
     await expect(page.getByLabel('Assigned reviewer')).toBeEnabled()
     for (const selector of ['.modal-heading h2', '.modal-heading p', '.field input:not([readonly])', '.field select', '.field textarea', '.field > small']) {
       await expectReadable(page, selector, /input|select|textarea/.test(selector))
@@ -115,7 +115,7 @@ test('dark mode supports creation approval revision decline and history', async 
   page.on('pageerror', error => pageErrors.push(error.message))
   await page.goto('/')
   await page.getByRole('button', { name: 'Toggle dark mode' }).click()
-  await page.getByRole('button', { name: 'New request', exact: true }).click()
+  await page.getByRole('button', { name: 'Create Request', exact: true }).click()
   await page.getByLabel('Assigned reviewer').selectOption(reviewer)
   await page.getByLabel('Mortgage application ID').fill(crypto.randomUUID())
   await page.getByLabel('Requested discount').fill('50')
