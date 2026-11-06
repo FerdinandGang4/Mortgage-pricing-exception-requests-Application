@@ -201,7 +201,7 @@ test('manager, reviewer and mortgage process complete an exception workflow', as
   const consoleErrors: string[] = []
   page.on('pageerror', error => consoleErrors.push(error.message))
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: 'Pricing exceptions', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Pricing Exception Service', exact: true })).toBeVisible()
   await expect(page.getByText('API connected')).toBeVisible()
   await page.getByRole('button', { name: 'New request', exact: true }).click()
   await page.getByLabel('Assigned reviewer').selectOption('22222222-2222-2222-2222-222222222222')
@@ -266,7 +266,7 @@ test('request lookup errors, role restrictions, filtering and mobile navigation'
   await page.setViewportSize({ width: 390, height: 844 })
   await page.getByRole('button', { name: 'Open navigation' }).click()
   await page.getByRole('button', { name: 'Pricing exceptions', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'Pricing exceptions', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Pricing Exception Service', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Approved', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Approved', exact: true })).toHaveAttribute('aria-pressed', 'true')
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy()

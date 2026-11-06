@@ -50,7 +50,7 @@ An explicit URL prevents Playwright from starting local servers. These tests cre
 
 ## Coverage and counts
 
-The browser suite has 14 cases covering request creation, reviewer attribution, validation, approval, decline, approved-discount retrieval, revisions, history, retry safety, stale decisions, stored references, demo-user switching (including delayed responses), reviewer assignment, and desktop/mobile navigation.
+The browser suite has 20 cases covering request creation, reviewer attribution, validation, approval, decline, approved-discount retrieval, revisions, history, retry safety, stale decisions, stored references, demo-user switching (including delayed responses), reviewer assignment, and desktop/mobile navigation. Six theme cases additionally cover keyboard operation, persistence, light/dark surfaces, measured text and form-control contrast, the dark-mode review workflow, blocked browser storage, and mobile layout. Theme contrast assertions target a minimum 4.5:1 for sampled text and 3:1 for sampled control boundaries; they are focused checks rather than a complete accessibility audit.
 
 The backend has 56 unit cases, 118 HTTP integration cases, and 10 isolated PostgreSQL cases: 184 backend cases. See the [backend test guide](../Backend/BlueHarvest.PricingExceptions/tests/README.md) for the full catalog and commands. Running that full solution requires Docker for the separate PostgreSQL test container.
 

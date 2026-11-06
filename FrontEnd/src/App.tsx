@@ -3,6 +3,7 @@ import type { Persona, PricingException, View } from './types'
 import { personas, shortId } from './lib/format'
 import { pricingApi } from './api/pricingExceptions'
 import { useRequestWorkspace } from './hooks/useRequestWorkspace'
+import { useTheme } from './hooks/useTheme'
 import { Sidebar } from './components/Sidebar'
 import { Header } from './components/Header'
 import { Footer } from './components/Footer'
@@ -20,6 +21,7 @@ import './chrome.css'
 
 type Dialog = { kind: 'create' | 'open' } | { kind: 'revise' | 'review'; request: PricingException } | null
 function App() {
+  const { theme, toggleTheme } = useTheme()
   const [year] = useState(() => new Date().getFullYear())
   const [persona, setPersona] = useState<Persona>(personas[0])
   const activePersonaId = useRef(personas[0].id)
@@ -47,10 +49,10 @@ function App() {
     try { await navigator.clipboard.writeText(id); setToast('Request ID copied. Share it with your reviewer.') }
     catch { setActionError('Copy was unavailable. The full request ID is ' + id) }
   }
-  const heading = view === 'requests' ? 'Pricing exceptions' : view === 'activity' ? 'Request history' : 'Approved discounts'
+  const heading = view === 'requests' ? 'Pricing Exception Service' : view === 'activity' ? 'Request history' : 'Approved discounts'
   return <div className="app-shell">
     <Sidebar view={view} onView={setView} pending={workspace.requests.filter(r => r.status === 'Pending').length} open={menuOpen} onClose={() => setMenuOpen(false)}/>
-    <div className="main-shell"><Header persona={persona} connected={workspace.connected} onPersona={id => { activePersonaId.current = id; setPersona(personas.find(p => p.id === id)!); setDialog(null); setToast(''); setActionError('') }} onMenu={() => setMenuOpen(true)}/>
+    <div className="main-shell"><Header theme={theme} onToggleTheme={toggleTheme} persona={persona} connected={workspace.connected} onPersona={id => { activePersonaId.current = id; setPersona(personas.find(p => p.id === id)!); setDialog(null); setToast(''); setActionError('') }} onMenu={() => setMenuOpen(true)}/>
       <main className="main-content"><div className="page-heading"><div><p className="eyebrow">MORTGAGE LENDING</p><h1>{heading}</h1><p>{view === 'requests' ? 'Thoughtful exceptions. Confident decisions.' : view === 'activity' ? 'Every revision and decision, in the order it happened.' : 'Verified discounts for the mortgage application process.'}</p></div><div className="page-actions"><button className="button secondary" onClick={() => setDialog({ kind: 'open' })}><Icon name="search" size={17}/>Open request</button>{persona.role === 'RelationshipManager' && <button className="button primary" onClick={() => setDialog({ kind: 'create' })}><Icon name="plus" size={18}/>New request</button>}</div></div>
         <ErrorMessage message={workspace.error || actionError}/>
         {toast && <div className="toast" role="status"><Icon name="check" size={18}/><span>{toast}</span><button aria-label="Dismiss notification" className="icon-button" onClick={() => setToast('')}><Icon name="close" size={16}/></button></div>}

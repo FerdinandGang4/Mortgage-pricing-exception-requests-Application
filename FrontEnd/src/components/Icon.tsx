@@ -1,5 +1,7 @@
-type IconName = 'grid' | 'requests' | 'activity' | 'discount' | 'plus' | 'search' | 'arrow' | 'close' | 'check' | 'clock' | 'shield' | 'refresh' | 'copy' | 'file' | 'menu' | 'external' | 'alert'
+type IconName = 'grid' | 'requests' | 'activity' | 'discount' | 'plus' | 'search' | 'arrow' | 'close' | 'check' | 'clock' | 'shield' | 'refresh' | 'copy' | 'file' | 'menu' | 'external' | 'alert' | 'sun' | 'moon'
 const paths: Record<IconName, React.ReactNode> = {
+  sun: <><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></>,
+  moon: <path d="M20.5 13.4A8.5 8.5 0 0 1 10.6 3.5a8.5 8.5 0 1 0 9.9 9.9Z"/>,
   grid: <><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></>,
   requests: <><path d="M8 3h8l4 4v14H4V3z"/><path d="M15 3v5h5M8 12h8M8 16h5"/></>,
   activity: <><path d="M3 12h4l3-8 4 16 3-8h4"/></>,
