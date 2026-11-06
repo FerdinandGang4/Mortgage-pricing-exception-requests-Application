@@ -4,6 +4,7 @@ The complete repository contains the runnable application and tests. Current doc
 
 | Deliverable | Location |
 | --- | --- |
+| Frontend design | [Word](../Backend/BlueHarvest.PricingExceptions/docs/BlueHarvest_Frontend_Design.docx), [Markdown and diagrams](../FrontEnd/Design/Frontend_Design.md) |
 | Entity relationship diagram | [Word](../Backend/BlueHarvest.PricingExceptions/docs/BlueHarvest_Current_Entity_Relationships_Final.docx), [PDF](../Backend/BlueHarvest.PricingExceptions/docs/BlueHarvest_Current_Entity_Relationships.pdf) |
 | Sequence diagrams | [Word](../Backend/BlueHarvest.PricingExceptions/docs/BlueHarvest_Current_Sequence_Diagrams_Final.docx), [PDF](../Backend/BlueHarvest.PricingExceptions/docs/BlueHarvest_Current_Sequence_Diagrams.pdf) |
 | Assumptions and reasons | [Word](../Backend/BlueHarvest.PricingExceptions/docs/Assumptions.docx), [Markdown](../Backend/BlueHarvest.PricingExceptions/docs/Architecture/Assumptions.md) |

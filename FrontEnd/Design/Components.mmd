@@ -1,0 +1,15 @@
+flowchart TB
+    Entry["main.tsx<br/>React StrictMode"] --> App["App.tsx<br/>views, selected user, dialogs, selected request"]
+    App --> Chrome["Application shell<br/>Header / Sidebar / Footer"]
+    App --> Workspace["Request workspace<br/>StatCards / RequestTable / RequestDetails"]
+    App --> Dialogs["Conditional dialogs<br/>RequestFormDialog / ReviewDialog / OpenRequestDialog"]
+    App --> Lookup["ApprovedDiscountLookup<br/>discount view only"]
+    Workspace --> History["HistoryTimeline<br/>inside RequestDetails"]
+    Dialogs --> Modal["Modal<br/>native dialog wrapper"]
+    App -.-> Hook["useRequestWorkspace<br/>tracked IDs, loading, API refresh"]
+    Dialogs -.-> Keys["useOperationKey<br/>reuse key for unchanged payload"]
+    Workspace -.-> Shared["Shared UI<br/>Icon / StatusBadge / Feedback"]
+    Dialogs -.-> Shared
+    classDef root fill:#12263d,color:#fff,stroke:#12263d
+    classDef default fill:#edf6f7,color:#203750,stroke:#8dbec2
+    class App root

@@ -1,5 +1,7 @@
 # Blue Harvest lending workspace
 
+Frontend design: [Word document](../Backend/BlueHarvest.PricingExceptions/docs/BlueHarvest_Frontend_Design.docx) · [Markdown and diagrams](Design/Frontend_Design.md). Covers component structure, responsibilities, API data flow, state management, and responsive behaviour.
+
 React + TypeScript interface for the mortgage pricing exception API, built with Vite. It uses live backend responses and a responsive desktop/mobile layout.
 
 ## Run locally

@@ -9,6 +9,7 @@ Only the current versions of the requested documents are retained here.
 | Assumptions and reasons | [Word](Assumptions.docx) | [Maintained Markdown](Architecture/Assumptions.md) |
 | Assignment presentation | [Latest PowerPoint](BlueHarvest_Assignment_Presentation.pptx) | [PDF](BlueHarvest_Assignment_Presentation.pdf) |
 | Run locally with Docker | [Step-by-step Word guide](BlueHarvest_Docker_Clear_Instructions.docx) | [Detailed Docker commands](../../../DOCKER.md) |
+| Frontend design | [Word](BlueHarvest_Frontend_Design.docx) | [Markdown and editable diagrams](../../../FrontEnd/Design/Frontend_Design.md) |
 
 The presentation is the latest version 4 supplied in the repository, dated 8 November 2026 and presented by Ferdinand Dinga. Older slide decks, duplicate exports, previews and earlier diagram documents have been removed.
 
