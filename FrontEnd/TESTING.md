@@ -1,63 +1,64 @@
-# Full application validation
+# Application checks and browser tests
 
-Validated on 3 November 2026 with Windows, .NET 10, Node.js and headless Microsoft Edge.
+Run frontend commands from `FrontEnd`. Windows examples use `npm.cmd`; use `npm` on macOS/Linux. Install the .NET 10 SDK and Node.js 24, then run `npm.cmd ci` if frontend dependencies are not installed.
 
-| Check | Result |
-| --- | --- |
-| Backend service tests, Release configuration | 21 passed |
-| Backend HTTP integration tests | 14 passed |
-| Frontend TypeScript and Vite production build | Passed |
-| Frontend Oxlint | Passed, no lint warnings |
-| Browser tests against the live backend | 9 passed |
-| Live API smoke-test script | Passed |
-| Frontend, backend proxy and Swagger HTTP checks | 200 OK |
-
-Total automated test cases: **44**, plus live smoke checks.
-
-## Browser coverage
-
-1. Invalid application IDs and blank supporting reasons are rejected before a create is sent.
-2. A create response lost after the server saves can be retried with the same idempotency key, producing one request and one history event.
-3. A stale review displays a conflict without closing the dialog; refreshing shows the competing decision.
-4. Workspace reload retrieves current details by stored IDs. Search and status filters work, and reasons are not persisted in localStorage.
-5. Decline records the review note in history.
-6. Creation, independent approval, approved-discount lookup, revision and withdrawal of the old effective approval work together.
-7. Unknown IDs, role restrictions and mobile navigation are handled.
-8. Desktop/mobile layouts, modal dismissal and horizontal-overflow checks pass.
-
-Tests start a separate backend on port 5270 and frontend on 5174. Development servers remain on 5267 and 5173.
-
-## Fixes during validation
-
-- Moved initial workspace state updates after asynchronous reads and rejected obsolete results on role changes.
-- Cancelled stale requests during effect cleanup.
-- Associated history data with the current request and persona, hiding outdated history during loading.
-- Initialized the footer year once instead of constructing a Date during render.
-- Expanded the browser suite from four to eight scenarios.
-
-The initial backend rebuild failed because its running executable was locked. The API was stopped, the Release build and tests passed, and the API was restarted. Restarting resets InMemory workflow data.
-
-## Reproduce
-
-From the repository root, stop any running backend that locks the build output, then:
+## Build and lint
 
 ```powershell
-dotnet test Backend/BlueHarvest.PricingExceptions/BlueHarvest.PricingExceptions.slnx --configuration Release --no-restore
-dotnet build Backend/BlueHarvest.PricingExceptions/BlueHarvest.PricingExceptions.slnx --configuration Debug --no-restore
-cd FrontEnd
 npm.cmd run build
 npm.cmd run lint
+```
+
+The build uses strict TypeScript checks for application code, Vite configuration, Playwright configuration, and browser tests before building production assets. Unused local variables and parameters are checked by TypeScript.
+
+## Isolated browser tests
+
+```powershell
+$env:E2E_BASE_URL = $null
 npm.cmd run test:e2e
 ```
 
-For the live smoke script, start the Development backend and run from the repository root:
+Playwright builds and runs the current backend project in Development with an isolated InMemory database on port 5270, and starts Vite on port 5174. A previously built Debug DLL is not required. Both ports must be free; existing servers are not reused. Playwright shuts down its temporary servers after the run. This mode does not change the application Compose database.
+
+The tests use Microsoft Edge on Windows. On Linux/macOS install Chromium with `npx playwright install chromium` (on Linux CI, `npx playwright install --with-deps chromium`).
+
+## Test the running Docker application
+
+From the repository root, first start the application:
 
 ```powershell
-./Backend/BlueHarvest.PricingExceptions/tests/Invoke-ApiSmokeTests.ps1
+docker compose up --build -d
+docker compose ps
+cd FrontEnd
+$env:E2E_BASE_URL = 'http://localhost:5173'
+npm.cmd run test:e2e
 ```
 
-These results validate the implemented local workflows, not production readiness or exhaustive security/performance coverage. InMemory storage, Development-only demo authentication and external mortgage application validation limitations remain as documented.
+An explicit URL prevents Playwright from starting local servers. These tests create labelled demo requests in the running PostgreSQL database. Existing data remains intact. To return to isolated tests, clear `E2E_BASE_URL` as shown above.
 
-## Requester and reviewer tracking update
+## Environment variables
 
-Additional tests verify requester identity is captured from the authenticated user, caller-supplied identity names are ignored, a valid reviewer is required, only the assigned reviewer can decide, and names are retained as historical snapshots after user renaming. The new browser scenario verifies the read-only requester, reviewer dropdown, request details and decision history. Current totals are 35 backend cases and 9 browser cases; frontend build and lint pass.
+| Variable | Used by | Default and effect |
+| --- | --- | --- |
+| `E2E_BASE_URL` | Playwright | Unset or blank starts temporary servers. A non-blank URL tests an existing application. Whitespace is trimmed. |
+| `API_PROXY_TARGET` | Vite | Defaults to `http://localhost:5267`. Both `/api` and `/openapi` use the same target. Unset or blank values use the default. Isolated browser tests set it to port 5270. |
+| `VITE_ENABLE_DEMO_USERS` | Frontend build | Normal production builds disable demo switching. The local Docker build explicitly sets `true`; Vite development also enables it. |
+| `ASPNETCORE_ENVIRONMENT` | Backend | Browser tests set Development, where seeded identities and OpenAPI are available. The demo identity header is rejected outside Development. |
+| `Database__Provider` | Backend tests | Temporary browser servers set InMemory. Normal application deployments use PostgreSQL. |
+| `ConnectionStrings__PricingExceptions` | Backend | Override the local database connection when using a custom host, port, database, or password. Never use the application database for isolated database tests. |
+| `POSTGRES_PORT`, `POSTGRES_PASSWORD`, `BACKEND_PORT`, `FRONTEND_PORT` | Docker Compose | Local overrides documented in [DOCKER.md](../DOCKER.md). If the frontend port changes, match it in `E2E_BASE_URL`. |
+
+## Coverage and counts
+
+The browser suite has 14 cases covering request creation, reviewer attribution, validation, approval, decline, approved-discount retrieval, revisions, history, retry safety, stale decisions, stored references, demo-user switching (including delayed responses), reviewer assignment, and desktop/mobile navigation.
+
+The backend has 56 unit cases, 118 HTTP integration cases, and 10 isolated PostgreSQL cases: 184 backend cases. See the [backend test guide](../Backend/BlueHarvest.PricingExceptions/tests/README.md) for the full catalog and commands. Running that full solution requires Docker for the separate PostgreSQL test container.
+
+```powershell
+# From Backend/BlueHarvest.PricingExceptions:
+dotnet restore
+dotnet build --configuration Release --no-restore -warnaserror
+dotnet test --configuration Release --no-build --no-restore --logger "console;verbosity=normal"
+```
+
+Browser failure screenshots and traces are written to the ignored `FrontEnd/test-results` directory. Passing these checks validates the exercised workflows; distributed concurrency, production identity, exhaustive performance/security checks, and external mortgage-system integration remain outside this demo's guarantees.

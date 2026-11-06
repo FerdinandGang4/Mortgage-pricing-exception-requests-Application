@@ -10,7 +10,7 @@ The [backend documentation index](Backend/BlueHarvest.PricingExceptions/docs/REA
 - [Docker commands and configuration](DOCKER.md)
 - [Latest presentation](Backend/BlueHarvest.PricingExceptions/docs/BlueHarvest_Assignment_Presentation.pptx)
 - [Assumptions and reasons](Backend/BlueHarvest.PricingExceptions/docs/Assumptions.docx)
-- [Original assignment](<Documentation/Blue Harvest Agentic SDLC Engineering Assignment.pdf>)
+- [Original assignment](<Backend/BlueHarvest.PricingExceptions/docs/Architecture/Blue Harvest Agentic SDLC Engineering Assignment.pdf>)
 
 ## Start with Docker
 

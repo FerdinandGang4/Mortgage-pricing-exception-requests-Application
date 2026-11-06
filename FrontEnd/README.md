@@ -6,9 +6,11 @@ React + TypeScript interface for the mortgage pricing exception API, built with 
 
 ## Run locally
 
-Start the backend in Development from the repository root:
+Start PostgreSQL and the backend in Development from the repository root. Stop the Compose backend/frontend first if they already use the local development ports:
 
 ```powershell
+docker compose stop frontend backend
+docker compose up -d postgres
 dotnet run --project Backend/BlueHarvest.PricingExceptions/src/PricingExceptions.API --launch-profile http
 ```
 
@@ -21,6 +23,8 @@ npm.cmd run dev
 ```
 
 Open http://localhost:5173. The frontend is a separate process. Vite proxies /api and /openapi to http://localhost:5267, so local development does not require backend CORS changes. If the backend uses another port, set API_PROXY_TARGET before starting Vite:
+
+These defaults assume the Compose database's default port and demo password. If you override `POSTGRES_PORT` or `POSTGRES_PASSWORD`, set the backend's `ConnectionStrings__PricingExceptions` environment variable to the matching local connection string before `dotnet run`. See [DOCKER.md](../DOCKER.md).
 
 ```powershell
 $env:API_PROXY_TARGET = 'http://localhost:5267'
@@ -60,22 +64,22 @@ The connection indicator reports whether the Development OpenAPI endpoint respon
 
 ## Checks
 
-See [TESTING.md](TESTING.md) for the combined frontend/backend validation results. The browser suite contains eleven scenarios, including lost-response retry, stale decisions, validation, workspace reload, and responsive navigation.
+See [TESTING.md](TESTING.md) for the combined frontend/backend validation results and environment variables. The browser suite contains fourteen scenarios, including lost-response retry, stale decisions, validation, workspace reload, and responsive navigation.
 
 ```powershell
 npm.cmd run build
+npm.cmd run lint
 ```
 
-Browser tests use Microsoft Edge on Windows and Chromium on other platforms. Build the backend first, then run from FrontEnd:
+Browser tests use Microsoft Edge on Windows and Chromium on other platforms. With the .NET 10 SDK installed, run from FrontEnd; Playwright builds and starts the backend from its current source:
 
 ```powershell
-dotnet build ../Backend/BlueHarvest.PricingExceptions/BlueHarvest.PricingExceptions.slnx
 npm.cmd run test:e2e
 ```
 
 On non-Windows systems install the browser with npx playwright install chromium first. The tests start an isolated backend on port 5270 and frontend on port 5174. They cover approval, revision, approved-discount withdrawal, decline, history, role restrictions, lookup failures, modal dismissal, filtering and responsive navigation. Screenshots and failure traces are ignored by Git under test-results.
 
-The production build is emitted to dist. Serve production assets with same-origin /api routing or an appropriate reverse proxy; the Vite development proxy is not part of the production build. The backend currently uses InMemory and Development-only demo authentication.
+The production build is emitted to dist. Serve production assets with same-origin /api routing or an appropriate reverse proxy; the Vite development proxy is not part of the production build. The application backend uses PostgreSQL and Development-only demo authentication. Only isolated service, HTTP, and browser tests select InMemory; the separate PostgreSQL test project exercises the real database.
 
 Typography is self-hosted using DM Sans and Manrope. Their SIL Open Font License notices are distributed under public/licenses. No external font-service connection is needed.
 
