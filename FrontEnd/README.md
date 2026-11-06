@@ -34,13 +34,13 @@ On other platforms use npm instead of npm.cmd.
 New requests automatically show the requester profile from the authenticated backend identity. Select an assigned reviewer from the API-backed dropdown. Request details display requester and assigned-reviewer IDs and names, while completed decisions also show the acting reviewer name/ID and decision time. Assignment is preserved when revising; only the selected reviewer can decide.
 
 - Sidebar and Header: responsive navigation, backend connectivity and demo persona selection.
-- StatCards: counts for requests opened in this browser workspace.
-- RequestTable: search by request/application ID or reason, filter by status, select request details.
+- RequestSummary: counts for requests opened in this browser workspace.
+- PricingExceptionTable: search by request/application ID or reason, filter by status, select request details.
 - RequestDetails: current terms, reviewer/time, copyable request ID and role-aware actions.
 - RequestFormDialog: create a request or submit a new immutable revision, with validation and approval-withdrawal notice.
-- ReviewDialog: independent approval/decline with optional review notes and an exact revision/version.
-- HistoryTimeline: chronological events linked to preserved terms and review decisions.
-- OpenRequestDialog: load all existing backend requests, select one from a dropdown, preview it and open its latest details.
+- ReviewRequestDialog: independent approval/decline with optional review notes and an exact revision/version.
+- RequestHistory: chronological events linked to preserved terms and review decisions.
+- RequestDetailsDialog: load all existing backend requests, select one from a dropdown, preview it and open its latest details.
 - ApprovedDiscountLookup: mortgage-process lookup of the current approved discount.
 - Modal, StatusBadge, Icon and Feedback: shared accessible interface elements.
 

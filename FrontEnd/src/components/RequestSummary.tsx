@@ -1,6 +1,6 @@
 import type { PricingException } from '../types'
 import { Icon } from './Icon'
-export function StatCards({ requests }: { requests: PricingException[] }) {
+export function RequestSummary({ requests }: { requests: PricingException[] }) {
   const stats = [
     { label: 'Requests in workspace', value: requests.length, icon: 'requests' as const, caption: 'Created or opened here', color: 'blue' },
     { label: 'Awaiting review', value: requests.filter(r => r.status === 'Pending').length, icon: 'clock' as const, caption: 'Ready for a decision', color: 'amber' },

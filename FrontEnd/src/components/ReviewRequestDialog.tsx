@@ -8,7 +8,7 @@ import { ErrorMessage } from './Feedback'
 import { Modal } from './Modal'
 import { Icon } from './Icon'
 
-export function ReviewDialog({ request, persona, onClose, onSuccess }: { request: PricingException; persona: Persona; onClose: () => void; onSuccess: (request: PricingException) => void }) {
+export function ReviewRequestDialog({ request, persona, onClose, onSuccess }: { request: PricingException; persona: Persona; onClose: () => void; onSuccess: (request: PricingException) => void }) {
   const [outcome, setOutcome] = useState<'Approved' | 'Declined'>('Approved')
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)

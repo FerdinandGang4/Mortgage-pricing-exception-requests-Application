@@ -6,7 +6,7 @@ import { shortId } from '../lib/format'
 import { Modal } from './Modal'
 import { ErrorMessage } from './Feedback'
 
-export function OpenRequestDialog({ persona, onClose, onSuccess }: { persona: Persona; onClose: () => void; onSuccess: (request: PricingException) => void }) {
+export function RequestDetailsDialog({ persona, onClose, onSuccess }: { persona: Persona; onClose: () => void; onSuccess: (request: PricingException) => void }) {
   const [id, setId] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')

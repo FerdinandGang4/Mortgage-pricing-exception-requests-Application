@@ -5,7 +5,7 @@ import { EmptyState } from './Feedback'
 import { Icon } from './Icon'
 import { StatusBadge } from './StatusBadge'
 
-export function RequestTable({ requests, selectedId, onSelect, loading, onOpen }: { requests: PricingException[]; selectedId: string | null; onSelect: (request: PricingException) => void; loading: boolean; onOpen: () => void }) {
+export function PricingExceptionTable({ requests, selectedId, onSelect, loading, onOpen }: { requests: PricingException[]; selectedId: string | null; onSelect: (request: PricingException) => void; loading: boolean; onOpen: () => void }) {
   const [filter, setFilter] = useState<RequestStatus | 'All'>('All')
   const [query, setQuery] = useState('')
   const visible = requests.filter(r => (filter === 'All' || r.status === filter) && (r.id + r.mortgageApplicationId + r.reason).toLowerCase().includes(query.toLowerCase()))

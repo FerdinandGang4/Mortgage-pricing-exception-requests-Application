@@ -375,3 +375,56 @@ test('James assigns three requests to David Emily and Robert and each reviewer r
   await expect(page.getByRole('cell', { name: 'Approved', exact: true })).toHaveCount(2)
   await expect(page.getByRole('cell', { name: 'Declined', exact: true })).toHaveCount(1)
 })
+
+
+test('switching demo users ignores an earlier users delayed request response', async ({ page }) => {
+  const manager = '11111111-1111-1111-1111-111111111111'
+  const reviewer = '22222222-2222-2222-2222-222222222222'
+  const processUser = '33333333-3333-3333-3333-333333333333'
+  const applicationId = crypto.randomUUID()
+  const createdResponse = await page.request.post('/api/v1/pricing-exceptions', {
+    headers: { 'X-User-Id': manager, 'Idempotency-Key': crypto.randomUUID() },
+    data: { mortgageApplicationId: applicationId, discountBps: 50, reason: 'Delayed user switch regression.', reviewerId: reviewer },
+  })
+  expect(createdResponse.status()).toBe(201)
+  const created = await createdResponse.json()
+  const decision = await page.request.post('/api/v1/pricing-exceptions/' + created.id + '/decisions', {
+    headers: { 'X-User-Id': reviewer, 'Idempotency-Key': crypto.randomUUID() },
+    data: { outcome: 'Approved', expectedVersion: 1, reviewedRevisionNumber: 1 },
+  })
+  expect(decision.status()).toBe(200)
+  await page.addInitScript(id => localStorage.setItem('blueharvest.requestIds', JSON.stringify([id])), created.id)
+  await page.goto('/')
+  await expect(page.locator('tbody tr')).toHaveCount(1)
+  await page.getByLabel('Select Demo User').selectOption(processUser)
+  await expect(page.getByText('API connected')).toBeVisible()
+  await page.getByRole('button', { name: 'Approved discounts', exact: true }).click()
+  await page.getByLabel('Mortgage application ID').fill(applicationId)
+  await page.getByRole('button', { name: 'Find approved discount', exact: true }).click()
+  await expect(page.getByText('Currently approved', { exact: true })).toBeVisible()
+
+  let release!: () => void
+  let markStarted!: () => void
+  const delayed = new Promise<void>(resolve => { release = resolve })
+  const started = new Promise<void>(resolve => { markStarted = resolve })
+  await page.route('**/api/v1/pricing-exceptions/' + created.id, async route => {
+    if (route.request().headers()['x-user-id'] === processUser) {
+      markStarted()
+      await delayed
+    }
+    await route.continue()
+  })
+  await page.getByRole('button', { name: 'View request and history', exact: true }).click()
+  await started
+  await page.getByLabel('Select Demo User').selectOption(manager)
+  await expect(page.getByRole('button', { name: 'Submit a revision', exact: true })).toBeVisible()
+  const oldResponse = page.waitForResponse(response => response.url().endsWith('/api/v1/pricing-exceptions/' + created.id)
+    && response.request().headers()['x-user-id'] === processUser)
+  release()
+  await oldResponse
+
+  await expect(page.getByRole('button', { name: 'Refresh', exact: true })).toBeEnabled()
+  await expect(page.getByText('API connected')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Submit a revision', exact: true })).toBeVisible()
+  await expect(page.locator('.detail-fields')).toContainText(applicationId)
+})

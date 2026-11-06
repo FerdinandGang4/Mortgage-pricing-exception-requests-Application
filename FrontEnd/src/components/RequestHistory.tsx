@@ -1,8 +1,8 @@
-import type { RequestHistory } from '../types'
+import type { RequestHistory as RequestHistoryData } from '../types'
 import { actorName, dateTime } from '../lib/format'
 import { Icon } from './Icon'
 
-export function HistoryTimeline({ history, requesterId, requesterName }: { history: RequestHistory; requesterId: string; requesterName: string }) {
+export function RequestHistory({ history, requesterId, requesterName }: { history: RequestHistoryData; requesterId: string; requesterName: string }) {
   return <ol className="timeline history-events" aria-label="Request history">{[...history.events].sort((a, b) => b.sequence - a.sequence).map(event => {
     const revision = history.revisions.find(r => r.revisionNumber === event.revisionNumber)
     const decision = history.decisions.find(d => d.revisionNumber === event.revisionNumber)

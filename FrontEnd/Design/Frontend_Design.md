@@ -20,13 +20,13 @@ Code: src/main.tsx, src/App.tsx, src/components, src/hooks. All paths in this do
 | Header.tsx | Shows connectivity, selected user's name and role; emits demo-user and menu changes. |
 | Sidebar.tsx | Navigates views and shows pending count for tracked requests; closes mobile navigation after selection. |
 | Footer.tsx | Product/developer credits, telephone/email links and GitHub repository link. |
-| StatCards.tsx | Summarises the requests tracked in this browser workspace, rather than all database records. |
-| RequestTable.tsx | Filters tracked requests by status/search and emits selection or Open request actions. |
+| RequestSummary.tsx | Summarises the requests tracked in this browser workspace, rather than all database records. |
+| PricingExceptionTable.tsx | Filters tracked requests by status/search and emits selection or Open request actions. |
 | RequestDetails.tsx | Shows current terms, assignment, decision details and role-appropriate actions; loads history for the current request/user. |
-| HistoryTimeline.tsx | Shows events newest first, with revision badges, actor/time, submitted terms or decision reasons. |
+| RequestHistory.tsx | Shows events newest first, with revision badges, actor/time, submitted terms or decision reasons. |
 | RequestFormDialog.tsx | Handles create/revision inputs, validation and submission; fetches requester/reviewer data for creation. Assignment is retained during revision. |
-| ReviewDialog.tsx | Collects approval/decline and review note; submits expected version and revision. |
-| OpenRequestDialog.tsx | Loads the backend request directory, lets users select a request, then opens its current details in the workspace. |
+| ReviewRequestDialog.tsx | Collects approval/decline and review note; submits expected version and revision. |
+| RequestDetailsDialog.tsx | Loads the backend request directory, lets users select a request, then opens its current details in the workspace. |
 | ApprovedDiscountLookup.tsx | Mortgage Process lookup of the current effective discount; opens the related request on demand. |
 | Modal.tsx | Shared native HTML dialog: showModal, title/description, close, Escape/backdrop handling, and busy-state dismissal protection. |
 | Shared UI | Icon.tsx contains SVG icons; StatusBadge.tsx renders statuses; Feedback.tsx supplies error alerts and empty states. |
@@ -50,7 +50,7 @@ api/pricingExceptions.ts supplies relative API URLs, JSON handling and error con
 | App | Persona, view, selectedId, dialog, menuOpen, toast and actionError. Selected request is derived from workspace data. |
 | useRequestWorkspace | Tracks up to 100 request IDs; fetches fresh records; exposes requests, loading, connected, error, refresh and remember. |
 | Browser localStorage | blueharvest.requestIds stores references only, not reasons/decisions. Shared across demo users in that browser; not a complete database directory. |
-| RequestTable | Local search text and status filter; filtering does not request new backend data. |
+| PricingExceptionTable | Local search text and status filter; filtering does not request new backend data. |
 | RequestDetails | Details/history tab and history response keyed to the current request object and actor. |
 | Forms and lookup | Inputs, busy/error states, directory data and lookup result. Lookup remounts on persona change. |
 

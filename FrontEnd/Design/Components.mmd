@@ -1,10 +1,10 @@
 flowchart TB
     Entry["main.tsx<br/>React StrictMode"] --> App["App.tsx<br/>views, selected user, dialogs, selected request"]
     App --> Chrome["Application shell<br/>Header / Sidebar / Footer"]
-    App --> Workspace["Request workspace<br/>StatCards / RequestTable / RequestDetails"]
-    App --> Dialogs["Conditional dialogs<br/>RequestFormDialog / ReviewDialog / OpenRequestDialog"]
+    App --> Workspace["Request workspace<br/>RequestSummary / PricingExceptionTable / RequestDetails"]
+    App --> Dialogs["Conditional dialogs<br/>RequestFormDialog / ReviewRequestDialog / RequestDetailsDialog"]
     App --> Lookup["ApprovedDiscountLookup<br/>discount view only"]
-    Workspace --> History["HistoryTimeline<br/>inside RequestDetails"]
+    Workspace --> History["RequestHistory<br/>inside RequestDetails"]
     Dialogs --> Modal["Modal<br/>native dialog wrapper"]
     App -.-> Hook["useRequestWorkspace<br/>tracked IDs, loading, API refresh"]
     Dialogs -.-> Keys["useOperationKey<br/>reuse key for unchanged payload"]
