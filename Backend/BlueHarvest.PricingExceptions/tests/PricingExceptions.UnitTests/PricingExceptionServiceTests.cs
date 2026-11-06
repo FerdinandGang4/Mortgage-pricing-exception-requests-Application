@@ -148,7 +148,7 @@ public sealed class PricingExceptionServiceTests : IDisposable
         Assert.Equal(decidedAt, decision.DecidedAtUtc);
     }
 
-    // 5. Approved Discount
+    // 5. Approved Discount Retrieval
 
     [Fact]
     public async Task ApprovedDiscountIsAvailableToMortgageProcess()
@@ -388,7 +388,7 @@ public sealed class PricingExceptionServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task SubmittedRequestRevisionCannotBeChanged()
+    public async Task SubmittedRevisionCannotBeModified()
     {
         // Arrange
         using var scope = provider.CreateScope();
@@ -568,7 +568,7 @@ public sealed class PricingExceptionServiceTests : IDisposable
     [Theory]
     [InlineData(99, 1)]
     [InlineData(1, 99)]
-    public async Task StaleReviewDoesNotChangeRequestHistory(long version, int revision)
+    public async Task ReviewWithOutdatedVersionOrRevisionIsRejected(long version, int revision)
     {
         // Arrange
         using var scope = provider.CreateScope();
@@ -584,7 +584,7 @@ public sealed class PricingExceptionServiceTests : IDisposable
     [Theory]
     [InlineData(99, 1)]
     [InlineData(1, 99)]
-    public async Task StaleRevisionDoesNotChangeRequestHistory(long version, int revision)
+    public async Task RevisionWithOutdatedVersionOrRevisionIsRejected(long version, int revision)
     {
         // Arrange
         using var scope = provider.CreateScope();
@@ -633,7 +633,7 @@ public sealed class PricingExceptionServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task RetryingCreationAfterApprovalReturnsOriginalRequest()
+    public async Task RetryingRequestCreationReturnsOriginalResult()
     {
         // Arrange
         using var scope = provider.CreateScope();

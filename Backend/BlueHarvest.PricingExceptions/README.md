@@ -2,6 +2,8 @@
 
 See the [current documentation index](docs/README.md) for the latest entity diagram, sequence diagrams, assumptions, presentation, and local Docker Word guide.
 
+See the [integration test guide](tests/README.md) for unit, HTTP, and PostgreSQL test commands and the workflow test catalog. Running the complete solution tests now requires Docker for the isolated PostgreSQL suite; the unit and HTTP projects can still run independently without Docker.
+
 ASP.NET Core controller-based API targeting .NET 10 for creating, independently reviewing, and retrieving mortgage pricing exceptions. It runs locally without private infrastructure or paid services.
 
 ## Implementation

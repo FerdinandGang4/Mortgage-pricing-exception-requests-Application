@@ -8,7 +8,7 @@
 2. **Request Submission:** `CreateAsync()` also submits the first revision immediately as Pending. The reviewer can retrieve it through `ListAsync()`. There is no draft state or separate submission command.
 3. **Request Approval:** the assigned reviewer approves; the result and stored decision retain the reviewer, reason, and exact UTC timestamp.
 4. **Request Decline:** the assigned reviewer declines; the status and saved decision retain the reason, reviewer, and timestamp.
-5. **Approved Discount:** MortgageProcess receives the current approved discount; Pending and Declined requests expose no discount.
+5. **Approved Discount Retrieval:** MortgageProcess receives the current approved discount; Pending and Declined requests expose no discount.
 6. **Request Revision:** the original manager submits new discount and reason values, increasing the revision and version. Revising an approved request invalidates its effective approval.
 7. **Revision Submission and Review:** `SubmitRevisionAsync()` saves and submits the revision in one operation. The latest revision is Pending and visible to the reviewer, who can approve or decline it. Only its approved discount is effective; an older approval is never a fallback.
 8. **Request History:** previous revisions, approvals, declines, names, actors, and timestamps remain available. Submitted revisions cannot be changed, and protected history and retry records cannot be deleted through the DbContext.
@@ -22,6 +22,8 @@ Arrange, Act, and Assert comments identify each test's purpose. Exception assert
 
 From `Backend/BlueHarvest.PricingExceptions`:
 
+The full solution now includes isolated PostgreSQL tests and requires Docker. To run only these InMemory unit tests without Docker, use `dotnet test tests/PricingExceptions.UnitTests/PricingExceptions.UnitTests.csproj`. See the [integration test guide](../README.md) for separate HTTP and PostgreSQL commands.
+
 ```powershell
 dotnet restore
 dotnet build
@@ -31,5 +33,9 @@ dotnet test --logger "console;verbosity=normal"
 ## Coverage boundaries
 
 All eleven workflow sections have dedicated service tests. These tests deliberately use InMemory and do not prove PostgreSQL transactions, migrations, constraints, restart persistence, distributed concurrency, or rollback on storage failure. The separate HTTP integration test project also selects InMemory; it validates API behavior rather than PostgreSQL storage semantics.
+
+The separate `PricingExceptions.PostgreSqlTests` project now covers relational persistence, constraints, atomic rollback, and concurrency using an isolated PostgreSQL Docker container. Those checks remain separate from this service test class.
+
+The separate [Docker persistence script](../Test-DockerPersistence.ps1) exercises the running Compose application and checks that an approved request, its audit records, and its original creation retry result survive container recreation. It is not executed by `dotnet test`. It creates demo data and runs Compose down/up while retaining the database volume. This is a persistence smoke test, not comprehensive PostgreSQL integration coverage for constraints, transactions, or concurrent writers.
 
 The assignment refers to an existing mortgage application. This implementation accepts an external, non-empty application GUID; verifying the application's existence with the mortgage system is not implemented or tested. Production identity, frontend user switching, and Docker operation are outside this service test class. No new submission operation or production behavior is introduced by these tests.
