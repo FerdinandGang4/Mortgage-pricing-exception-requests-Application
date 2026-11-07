@@ -108,7 +108,7 @@ SEQUENCES = [
         S-->>C: PricingExceptionResult
         C-->>UI: 201 DTO + Location pointing to request GET
     end''',
- 'PricingExceptionsController.Create; PricingExceptionService.CreateAsync, NewRevision, AppendHistory; ExecuteWriteAsync.',
+ 'PricingExceptionsController.CreatePricingExceptionRequestAsync; PricingExceptionService.CreateAsync, NewRevision, AppendHistory; ExecuteWriteAsync.',
  'Same-key replays bypass the operation callback. A different key for an existing mortgage application hits the service duplicate check. MortgageApplicationId is an external reference, not a foreign key to a local mortgage table. One request per application is a service policy, not a unique database index in the current migration.'),
 ('03-write-and-retry', 'Shared write execution and idempotent retries', '''sequenceDiagram
     autonumber
@@ -168,7 +168,7 @@ SEQUENCES = [
     W-->>C: Result via service
     C-->>R: 200 response DTO
     Note over C,D: Authentication errors are 401; wrong role / assignment is 403''',
- 'PricingExceptionsController.Review; PricingExceptionService.ReviewAsync; ReviewDecision entity; UserService.RequireRoleAsync.',
+ 'PricingExceptionsController.RecordPricingExceptionDecisionAsync; PricingExceptionService.ReviewAsync; ReviewDecision entity; UserService.RequireRoleAsync.',
  'The current request must be Pending and match both expected values. Assignment is independent of who last edited or viewed a record. A unique (RequestId, RevisionNumber) index on ReviewDecisions additionally enforces at most one decision per revision in PostgreSQL. The decision record has no direct foreign key to PricingExceptionRequest; it references RequestRevision.'),
 ('05-submit-revision', 'Revise terms and withdraw effective approval', '''sequenceDiagram
     autonumber
@@ -194,7 +194,7 @@ SEQUENCES = [
     W-->>C: Result via service
     C-->>M: 201 response DTO + request Location
     Note over M,D: Discount lookup now returns 404 until the new revision is approved''',
- 'PricingExceptionsController.SubmitRevision; PricingExceptionService.SubmitRevisionAsync, CheckVersion, NewRevision; ApprovedDiscountService.GetAsync.',
+ 'PricingExceptionsController.SubmitPricingExceptionRevisionAsync; PricingExceptionService.SubmitRevisionAsync, CheckVersion, NewRevision; ApprovedDiscountService.GetAsync.',
  'Revision is allowed while Pending and after either decision. Even unchanged terms create a new revision. No old approval is deleted; it becomes historical because current revision and status change. Version increases on both revision and decision; revision number increases only when terms are submitted.'),
 ('06-approved-discount', 'Retrieve the effective approved discount', '''sequenceDiagram
     autonumber
@@ -247,7 +247,7 @@ SEQUENCES = [
     end
     Note over S,L: finally releases semaphore
     Note over U,D: React displays events newest first using Sequence''',
- 'PricingExceptionsController.History; PricingExceptionService.GetHistorySnapshotAsync / ReadRequestAsync; HistoryMapper.cs; HistoryTimeline.tsx.',
+ 'PricingExceptionsController.GetPricingExceptionHistoryAsync; PricingExceptionService.GetHistorySnapshotAsync / ReadRequestAsync; HistoryMapper.cs; HistoryTimeline.tsx.',
  'Any known internal user may read history under current policy. The lock coordinates only writes in this process; the reads are not wrapped in a database snapshot transaction, so do not claim a cross-instance atomic snapshot. History uses request Version as Sequence. AsNoTracking reads avoid modifying submitted records.'),
 ('08-startup', 'Startup, PostgreSQL migrations and idempotent seeding', '''sequenceDiagram
     autonumber

@@ -18,17 +18,12 @@ public sealed class PricingExceptionsController(IPricingExceptionService service
     // Take the actor from authenticated claims rather than accepting a caller ID in the body.
     private Guid ActorId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-    [HttpGet]
-    [ProducesResponseType<IReadOnlyList<PricingExceptionResponseDto>>(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<PricingExceptionResponseDto>>> List(CancellationToken cancellationToken)
-        => Ok((await service.ListPricingExceptionRequestsAsync(ActorId, cancellationToken)).Select(PricingExceptionMapper.ToResponse).ToList());
-
     [HttpPost]
     [Authorize(Roles = "RelationshipManager")]
     [ProducesResponseType<PricingExceptionResponseDto>(StatusCodes.Status201Created)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
-    public async Task<ActionResult<PricingExceptionResponseDto>> Create(
+    public async Task<ActionResult<PricingExceptionResponseDto>> CreatePricingExceptionRequestAsync(
         CreateExceptionRequestDto request,
         [FromHeader(Name = "Idempotency-Key")] string idempotencyKey,
         CancellationToken cancellationToken)
@@ -36,32 +31,22 @@ public sealed class PricingExceptionsController(IPricingExceptionService service
         var result = await service.CreatePricingExceptionRequestAsync(request.MortgageApplicationId, request.DiscountBps,
             request.Reason, request.ReviewerId!.Value, ActorId, idempotencyKey, cancellationToken);
         // Include a Location header pointing to the newly created request's GET endpoint.
-        return CreatedAtAction(nameof(Get), new { id = result.Id }, PricingExceptionMapper.ToResponse(result));
+        return CreatedAtAction(nameof(GetPricingExceptionRequestByIdAsync), new { id = result.Id }, PricingExceptionMapper.ToResponse(result));
     }
 
+    [HttpGet]
+    [ProducesResponseType<IReadOnlyList<PricingExceptionResponseDto>>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<PricingExceptionResponseDto>>> GetPricingExceptionRequestsAsync(CancellationToken cancellationToken)
+        => Ok((await service.ListPricingExceptionRequestsAsync(ActorId, cancellationToken)).Select(PricingExceptionMapper.ToResponse).ToList());
+
     [HttpGet("{id:guid}")]
+    [ActionName(nameof(GetPricingExceptionRequestByIdAsync))]
     [ProducesResponseType<PricingExceptionResponseDto>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<PricingExceptionResponseDto>> Get(Guid id, CancellationToken cancellationToken)
+    public async Task<ActionResult<PricingExceptionResponseDto>> GetPricingExceptionRequestByIdAsync(Guid id, CancellationToken cancellationToken)
     {
         var result = await service.GetPricingExceptionRequestAsync(id, ActorId, cancellationToken);
         return Ok(PricingExceptionMapper.ToResponse(result));
-    }
-
-    [HttpPost("{id:guid}/revisions")]
-    [Authorize(Roles = "RelationshipManager")]
-    [ProducesResponseType<PricingExceptionResponseDto>(StatusCodes.Status201Created)]
-    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
-    public async Task<ActionResult<PricingExceptionResponseDto>> SubmitRevision(
-        Guid id, SubmitRevisionDto request,
-        [FromHeader(Name = "Idempotency-Key")] string idempotencyKey,
-        CancellationToken cancellationToken)
-    {
-        var result = await service.SubmitRequestRevisionAsync(id, request.DiscountBps, request.Reason,
-            request.ExpectedVersion, request.ExpectedRevisionNumber, ActorId, idempotencyKey, cancellationToken);
-        return CreatedAtAction(nameof(Get), new { id }, PricingExceptionMapper.ToResponse(result));
     }
 
     [HttpPost("{id:guid}/decisions")]
@@ -70,7 +55,7 @@ public sealed class PricingExceptionsController(IPricingExceptionService service
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
-    public async Task<ActionResult<PricingExceptionResponseDto>> Review(
+    public async Task<ActionResult<PricingExceptionResponseDto>> RecordPricingExceptionDecisionAsync(
         Guid id, ReviewDecisionDto request,
         [FromHeader(Name = "Idempotency-Key")] string idempotencyKey,
         CancellationToken cancellationToken)
@@ -81,10 +66,26 @@ public sealed class PricingExceptionsController(IPricingExceptionService service
         return Ok(PricingExceptionMapper.ToResponse(result));
     }
 
+    [HttpPost("{id:guid}/revisions")]
+    [Authorize(Roles = "RelationshipManager")]
+    [ProducesResponseType<PricingExceptionResponseDto>(StatusCodes.Status201Created)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<PricingExceptionResponseDto>> SubmitPricingExceptionRevisionAsync(
+        Guid id, SubmitRevisionDto request,
+        [FromHeader(Name = "Idempotency-Key")] string idempotencyKey,
+        CancellationToken cancellationToken)
+    {
+        var result = await service.SubmitRequestRevisionAsync(id, request.DiscountBps, request.Reason,
+            request.ExpectedVersion, request.ExpectedRevisionNumber, ActorId, idempotencyKey, cancellationToken);
+        return CreatedAtAction(nameof(GetPricingExceptionRequestByIdAsync), new { id }, PricingExceptionMapper.ToResponse(result));
+    }
+
     [HttpGet("{id:guid}/history")]
     [ProducesResponseType<HistoryResponseDto>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<HistoryResponseDto>> History(Guid id, CancellationToken cancellationToken)
+    public async Task<ActionResult<HistoryResponseDto>> GetPricingExceptionHistoryAsync(Guid id, CancellationToken cancellationToken)
     {
         var snapshot = await service.GetRequestHistorySnapshotAsync(id, ActorId, cancellationToken);
         return Ok(HistoryMapper.ToResponse(snapshot));

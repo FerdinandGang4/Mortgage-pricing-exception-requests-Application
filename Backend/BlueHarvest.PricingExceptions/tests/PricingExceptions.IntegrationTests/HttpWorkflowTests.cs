@@ -575,6 +575,7 @@ public sealed class HttpWorkflowTests
         // Assert
         Assert.Equal(HttpStatusCode.Created, retry.StatusCode);
         Assert.Equal(await original.Content.ReadAsStringAsync(), await retry.Content.ReadAsStringAsync());
+        Assert.EndsWith(Route(created), original.Headers.Location!.ToString());
         Assert.Equal(original.Headers.Location, retry.Headers.Location);
         Assert.Equal(3, (await demo.History(created)).GetProperty("events").GetArrayLength());
     }
@@ -615,6 +616,7 @@ public sealed class HttpWorkflowTests
         // Assert
         Assert.Equal(HttpStatusCode.Created, retry.StatusCode);
         Assert.Equal(await original.Content.ReadAsStringAsync(), await retry.Content.ReadAsStringAsync());
+        Assert.EndsWith(Route(created), original.Headers.Location!.ToString());
         Assert.Equal(original.Headers.Location, retry.Headers.Location);
         Assert.Equal(2, (await demo.History(created)).GetProperty("revisions").GetArrayLength());
         Assert.Equal(2, (await demo.History(created)).GetProperty("events").GetArrayLength());
@@ -760,6 +762,19 @@ public sealed class HttpWorkflowTests
         // Act and Assert
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/swagger/index.html")).StatusCode);
         var document = await client.GetFromJsonAsync<JsonElement>("/openapi/v1.json");
+        var endpoints = document.GetProperty("paths").EnumerateObject()
+            .Where(path => path.Name.StartsWith("/api/v1/pricing-exceptions", StringComparison.Ordinal))
+            .SelectMany(path => path.Value.EnumerateObject().Select(operation => operation.Name + " " + path.Name))
+            .OrderBy(endpoint => endpoint).ToArray();
+        Assert.Equal(new[]
+        {
+            "get /api/v1/pricing-exceptions",
+            "get /api/v1/pricing-exceptions/{id}",
+            "get /api/v1/pricing-exceptions/{id}/history",
+            "post /api/v1/pricing-exceptions",
+            "post /api/v1/pricing-exceptions/{id}/decisions",
+            "post /api/v1/pricing-exceptions/{id}/revisions"
+        }.OrderBy(endpoint => endpoint), endpoints);
         var create = document.GetProperty("paths").GetProperty("/api/v1/pricing-exceptions").GetProperty("post");
         Assert.Contains(create.GetProperty("parameters").EnumerateArray(),
             p => p.GetProperty("name").GetString() == "X-User-Id");
