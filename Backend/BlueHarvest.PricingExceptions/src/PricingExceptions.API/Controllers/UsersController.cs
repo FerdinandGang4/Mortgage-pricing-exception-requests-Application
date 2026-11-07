@@ -16,11 +16,11 @@ public sealed class UsersController(IUserService users) : ControllerBase
     private Guid ActorId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     [HttpGet("me")]
-    public async Task<ActionResult<UserResponseDto>> Me(CancellationToken cancellationToken)
-        => Ok(UserMapper.ToResponse(await users.GetRequiredAsync(ActorId, cancellationToken)));
+    public async Task<ActionResult<UserResponseDto>> GetCurrentUserProfileAsync(CancellationToken cancellationToken)
+        => Ok(UserMapper.ToResponse(await users.GetUserOrThrowAsync(ActorId, cancellationToken)));
 
     [HttpGet("reviewers")]
     [Authorize(Roles = "RelationshipManager")]
-    public async Task<ActionResult<IReadOnlyList<UserResponseDto>>> Reviewers(CancellationToken cancellationToken)
+    public async Task<ActionResult<IReadOnlyList<UserResponseDto>>> GetReviewersAsync(CancellationToken cancellationToken)
         => Ok((await users.GetReviewersAsync(ActorId, cancellationToken)).Select(UserMapper.ToResponse).ToList());
 }

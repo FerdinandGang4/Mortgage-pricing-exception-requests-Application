@@ -7,11 +7,11 @@ using PricingExceptions.API.Services.Models;
 
 namespace PricingExceptions.API.Services;
 
-public sealed class ApprovedDiscountService(PricingExceptionsDbContext database, IUserService users, InMemoryWriteLock writeLock) : IApprovedDiscountService
+public sealed class ApprovedDiscountService(PricingExceptionsDbContext database, IUserService userService, InMemoryWriteLock writeLock) : IApprovedDiscountService
 {
     public async Task<ApprovedDiscountResult?> GetAsync(Guid applicationId, Guid actorId, CancellationToken cancellationToken = default)
     {
-        await users.RequireRoleAsync(actorId, UserRole.MortgageProcess, cancellationToken);
+        await userService.GetUserWithRequiredRoleAsync(actorId, UserRole.MortgageProcess, cancellationToken);
         if (applicationId == Guid.Empty)
             throw new BusinessRuleException("A mortgage application identifier is required.");
 
@@ -21,17 +21,17 @@ public sealed class ApprovedDiscountService(PricingExceptionsDbContext database,
             // Only the current revision can supply an effective discount. Historical approvals
             // no longer apply after revised terms move the request back to Pending.
             return await (
-                from request in database.PricingExceptionRequests.AsNoTracking()
-                join revision in database.RequestRevisions.AsNoTracking()
-                    on new { RequestId = request.Id, RevisionNumber = request.CurrentRevisionNumber }
-                    equals new { revision.RequestId, revision.RevisionNumber }
-                join decision in database.ReviewDecisions.AsNoTracking()
-                    on new { revision.RequestId, revision.RevisionNumber }
-                    equals new { decision.RequestId, decision.RevisionNumber }
-                where request.MortgageApplicationId == applicationId
-                    && request.Status == RequestStatus.Approved && decision.Outcome == DecisionOutcome.Approved
-                select new ApprovedDiscountResult(request.Id, applicationId, revision.DiscountBasisPoints,
-                    revision.RevisionNumber, decision.ReviewedByUserId, decision.DecidedAtUtc, decision.ReviewerName)
+                from pricingExceptionRequest in database.PricingExceptionRequests.AsNoTracking()
+                join requestRevision in database.RequestRevisions.AsNoTracking()
+                    on new { RequestId = pricingExceptionRequest.Id, RevisionNumber = pricingExceptionRequest.CurrentRevisionNumber }
+                    equals new { requestRevision.RequestId, requestRevision.RevisionNumber }
+                join reviewDecision in database.ReviewDecisions.AsNoTracking()
+                    on new { requestRevision.RequestId, requestRevision.RevisionNumber }
+                    equals new { reviewDecision.RequestId, reviewDecision.RevisionNumber }
+                where pricingExceptionRequest.MortgageApplicationId == applicationId
+                    && pricingExceptionRequest.Status == RequestStatus.Approved && reviewDecision.Outcome == DecisionOutcome.Approved
+                select new ApprovedDiscountResult(pricingExceptionRequest.Id, applicationId, requestRevision.DiscountBasisPoints,
+                    requestRevision.RevisionNumber, reviewDecision.ReviewedByUserId, reviewDecision.DecidedAtUtc, reviewDecision.ReviewerName)
             ).SingleOrDefaultAsync(cancellationToken);
         }
         finally

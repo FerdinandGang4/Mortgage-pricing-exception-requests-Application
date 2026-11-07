@@ -56,7 +56,7 @@ SEQUENCES = [
         D-->>A: DisplayName and stored role
         alt User exists
             A->>C: ClaimsPrincipal (ID, name, role)
-            C->>S: GetRequiredAsync(actorId)
+            C->>S: GetUserOrThrowAsync(actorId)
             S->>D: Read and validate internal user
             S-->>C: User
             C-->>UI: 200 UserResponseDto
@@ -89,7 +89,7 @@ SEQUENCES = [
     UI->>C: POST /api/v1/pricing-exceptions + identity + key
     Note over C,S: Authentication, role and DTO validation occur before action logic
     C->>S: CreateAsync(... actorId, idempotencyKey)
-    S->>D: RequireRoleAsync(RelationshipManager)
+    S->>D: GetUserWithRequiredRoleAsync(RelationshipManager)
     S->>W: ExecuteWriteAsync(actor, create, key, payload)
     Note over W,D: Shared write wrapper handles lock and retries (diagram 03)
     W->>S: Run operation callback for a new key
@@ -153,7 +153,7 @@ SEQUENCES = [
     R->>C: POST /api/v1/pricing-exceptions/{id}/decisions
     Note over R,C: Outcome, optional reason, expectedVersion, reviewedRevisionNumber, key
     C->>S: ReviewAsync(... actorId)
-    S->>D: RequireRoleAsync(Reviewer)
+    S->>D: GetUserWithRequiredRoleAsync(Reviewer)
     S->>W: ExecuteWriteAsync(review:id, payload)
     W->>S: New-key callback after lock / replay lookup
     S->>D: Load request and validate outcome / reason
@@ -168,7 +168,7 @@ SEQUENCES = [
     W-->>C: Result via service
     C-->>R: 200 response DTO
     Note over C,D: Authentication errors are 401; wrong role / assignment is 403''',
- 'PricingExceptionsController.RecordPricingExceptionDecisionAsync; PricingExceptionService.ReviewAsync; ReviewDecision entity; UserService.RequireRoleAsync.',
+ 'PricingExceptionsController.RecordPricingExceptionDecisionAsync; PricingExceptionService.ReviewAsync; ReviewDecision entity; UserService.GetUserWithRequiredRoleAsync.',
  'The current request must be Pending and match both expected values. Assignment is independent of who last edited or viewed a record. A unique (RequestId, RevisionNumber) index on ReviewDecisions additionally enforces at most one decision per revision in PostgreSQL. The decision record has no direct foreign key to PricingExceptionRequest; it references RequestRevision.'),
 ('05-submit-revision', 'Revise terms and withdraw effective approval', '''sequenceDiagram
     autonumber
@@ -180,7 +180,7 @@ SEQUENCES = [
     M->>C: POST /api/v1/pricing-exceptions/{id}/revisions
     Note over M,C: bps, reason, expectedVersion, expectedRevisionNumber, key
     C->>S: SubmitRevisionAsync(... actorId)
-    S->>D: RequireRoleAsync(RelationshipManager)
+    S->>D: GetUserWithRequiredRoleAsync(RelationshipManager)
     S->>W: ExecuteWriteAsync(revise:id, payload)
     W->>S: New-key callback after lock / replay lookup
     S->>S: Validate terms
@@ -221,7 +221,7 @@ SEQUENCES = [
         C-->>P: NotFoundException mapped to 404 Problem Details
     end
     Note over S,L: Service finally releases the lock before controller responds''',
- 'ApprovedDiscountsController.Get; ApprovedDiscountService.GetAsync; ApprovedDiscountMapper.cs.',
+ 'ApprovedDiscountsController.GetApprovedDiscountForMortgageApplicationAsync; ApprovedDiscountService.GetAsync; ApprovedDiscountMapper.cs.',
  'Only the current revision participates. Historical approvals never substitute for Pending revised terms. This endpoint reads exception state; it neither fetches a mortgage application nor consumes an approval. An approval has no implemented expiry or external revocation contract.'),
 ('07-read-history', 'Read a consistent request history snapshot', '''sequenceDiagram
     autonumber
@@ -232,7 +232,7 @@ SEQUENCES = [
     participant D as EF / PostgreSQL
     U->>C: GET /api/v1/pricing-exceptions/{id}/history
     C->>S: GetHistorySnapshotAsync(id, actorId)
-    S->>D: GetRequiredAsync(actorId)
+    S->>D: GetUserOrThrowAsync(actorId)
     S->>L: ReadRequestAsync acquires shared semaphore
     S->>D: Confirm request exists
     alt Missing request

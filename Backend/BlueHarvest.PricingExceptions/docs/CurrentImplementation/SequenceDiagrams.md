@@ -32,7 +32,7 @@ Sources: PricingExceptionService.ExecuteWriteAsync; PricingExceptionsDbContext.S
 
 The current request must be Pending and match both expected values. Assignment is independent of who last edited or viewed a record. A unique (RequestId, RevisionNumber) index on ReviewDecisions additionally enforces at most one decision per revision in PostgreSQL. The decision record has no direct foreign key to PricingExceptionRequest; it references RequestRevision.
 
-Sources: PricingExceptionsController.RecordPricingExceptionDecisionAsync; PricingExceptionService.ReviewAsync; ReviewDecision entity; UserService.RequireRoleAsync.
+Sources: PricingExceptionsController.RecordPricingExceptionDecisionAsync; PricingExceptionService.ReviewAsync; ReviewDecision entity; UserService.GetUserWithRequiredRoleAsync.
 
 ## Revise terms and withdraw effective approval
 
@@ -48,7 +48,7 @@ Sources: PricingExceptionsController.SubmitPricingExceptionRevisionAsync; Pricin
 
 Only the current revision participates. Historical approvals never substitute for Pending revised terms. This endpoint reads exception state; it neither fetches a mortgage application nor consumes an approval. An approval has no implemented expiry or external revocation contract.
 
-Sources: ApprovedDiscountsController.Get; ApprovedDiscountService.GetAsync; ApprovedDiscountMapper.cs.
+Sources: ApprovedDiscountsController.GetApprovedDiscountForMortgageApplicationAsync; ApprovedDiscountService.GetAsync; ApprovedDiscountMapper.cs.
 
 ## Read a consistent request history snapshot
 

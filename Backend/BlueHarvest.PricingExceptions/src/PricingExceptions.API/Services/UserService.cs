@@ -12,26 +12,26 @@ public sealed class UserService(PricingExceptionsDbContext database) : IUserServ
 {
     public async Task<IReadOnlyList<User>> GetReviewersAsync(Guid actorId, CancellationToken cancellationToken = default)
     {
-        await RequireRoleAsync(actorId, UserRole.RelationshipManager, cancellationToken);
+        await GetUserWithRequiredRoleAsync(actorId, UserRole.RelationshipManager, cancellationToken);
         // Only independent reviewers are offered for assignment by a relationship manager.
         return await database.Users.AsNoTracking()
-            .Where(user => user.Role == UserRole.Reviewer && user.Id != actorId)
-            .OrderBy(user => user.DisplayName).ToListAsync(cancellationToken);
+            .Where(internalUser => internalUser.Role == UserRole.Reviewer && internalUser.Id != actorId)
+            .OrderBy(internalUser => internalUser.DisplayName).ToListAsync(cancellationToken);
     }
 
-    public async Task<User> GetRequiredAsync(Guid actorId, CancellationToken cancellationToken = default)
+    public async Task<User> GetUserOrThrowAsync(Guid actorId, CancellationToken cancellationToken = default)
     {
-        var user = await database.Users.AsNoTracking().SingleOrDefaultAsync(x => x.Id == actorId, cancellationToken);
-        if (user is null || !Enum.IsDefined(user.Role))
+        var internalUser = await database.Users.AsNoTracking().SingleOrDefaultAsync(storedUser => storedUser.Id == actorId, cancellationToken);
+        if (internalUser is null || !Enum.IsDefined(internalUser.Role))
             throw new ForbiddenException("A known internal user is required.");
-        return user;
+        return internalUser;
     }
 
-    public async Task<User> RequireRoleAsync(Guid actorId, UserRole role, CancellationToken cancellationToken = default)
+    public async Task<User> GetUserWithRequiredRoleAsync(Guid actorId, UserRole role, CancellationToken cancellationToken = default)
     {
-        var user = await GetRequiredAsync(actorId, cancellationToken);
-        if (user.Role != role)
+        var internalUser = await GetUserOrThrowAsync(actorId, cancellationToken);
+        if (internalUser.Role != role)
             throw new ForbiddenException($"The {role} role is required.");
-        return user;
+        return internalUser;
     }
 }
