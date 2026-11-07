@@ -7,9 +7,10 @@ sequenceDiagram
     participant D as EF / PostgreSQL
     R->>C: POST /api/v1/pricing-exceptions/{id}/decisions
     Note over R,C: Outcome, optional reason,<br/>expectedVersion,<br/>reviewedRevisionNumber, key
-    C->>S: ReviewAsync(... actorId)
-    S->>D: RequireRoleAsync(Reviewer)
-    S->>W: ExecuteWriteAsync(review:id, payload)
+    Note over C: RecordPricingExceptionDecision<br/>Async
+    C->>S: ReviewPricingExceptionRequestAsync(... actorId)
+    S->>D: GetUserWithRequiredRoleAsync(Reviewer)
+    S->>W: ExecuteIdempotentWriteAsync(review:id, payload)
     W->>S: New-key callback after lock / replay lookup
     S->>D: Load request and validate outcome / reason
     S->>S: Reject creator and unassigned reviewer (403)

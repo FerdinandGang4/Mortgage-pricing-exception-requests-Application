@@ -1,7 +1,7 @@
 sequenceDiagram
     autonumber
     participant S as Service entry point
-    participant W as ExecuteWriteAsync
+    participant W as ExecuteIdempotentWriteAsync
     participant L as Singleton semaphore
     participant D as EF / PostgreSQL
     S->>W: actor, scope, key, payload, callback

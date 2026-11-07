@@ -1,0 +1,16 @@
+sequenceDiagram
+    autonumber
+    actor U as Authorized internal user
+    participant C as Controllers
+    participant S as Services
+    participant D as PostgreSQL
+    U->>C: GetPricingExceptionHistoryAsync
+    C->>S: GetRequestHistorySnapshotAsync
+    S->>S: ExecuteAuthorizedRequestReadAsync
+    S->>D: Read events, revisions and decisions
+    D-->>U: Request history response via service and controller
+    U->>C: GetApprovedDiscountForMortgageApplicationAsync
+    C->>S: ApprovedDiscountService.GetAsync
+    S->>S: UserService.GetUserWithRequiredRoleAsync
+    S->>D: Join request to current revision and decision
+    D-->>U: 200 approved discount or 404 via service and controller

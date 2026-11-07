@@ -9,9 +9,10 @@ sequenceDiagram
     M->>UI: Enter application GUID, bps, reason, reviewer
     UI->>C: POST /api/v1/pricing-exceptions + identity + key
     Note over C,S: Authentication, role and DTO<br/>validation occur before action<br/>logic
-    C->>S: CreateAsync(... actorId, idempotencyKey)
-    S->>D: RequireRoleAsync(RelationshipManager)
-    S->>W: ExecuteWriteAsync(actor, create, key, payload)
+    Note over C: CreatePricingExceptionRequestA<br/>sync
+    C->>S: CreatePricingExceptionRequestAsync(... actorId, idempotencyKey)
+    S->>D: GetUserWithRequiredRoleAsync(RelationshipManager)
+    S->>W: ExecuteIdempotentWriteAsync(actor, create, key, payload)
     Note over W,D: Shared write wrapper handles<br/>lock and retries (diagram 03)
     W->>S: Run operation callback for a new key
     S->>S: Validate bps, reason and non-empty application GUID

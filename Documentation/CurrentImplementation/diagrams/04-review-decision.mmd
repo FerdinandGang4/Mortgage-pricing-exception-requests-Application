@@ -1,0 +1,26 @@
+sequenceDiagram
+    autonumber
+    actor R as Reviewer
+    participant C as Controller
+    participant S as PricingExceptionService
+    participant W as Write wrapper
+    participant D as EF / PostgreSQL
+    R->>C: POST /api/v1/pricing-exceptions/{id}/decisions
+    Note over R,C: Outcome, optional reason,<br/>expectedVersion,<br/>reviewedRevisionNumber, key
+    Note over C: RecordPricingExceptionDecision<br/>Async
+    C->>S: ReviewPricingExceptionRequestAsync(... actorId)
+    S->>D: GetUserWithRequiredRoleAsync(Reviewer)
+    S->>W: ExecuteIdempotentWriteAsync(review:id, payload)
+    W->>S: New-key callback after lock / replay lookup
+    S->>D: Load request and validate outcome / reason
+    S->>S: Reject creator and unassigned reviewer (403)
+    S->>S: Check expected version and current revision (409)
+    S->>D: Require Pending and no existing decision (409 otherwise)
+    S->>D: Load reviewed revision
+    S->>D: Stage decision with reviewer ID, name, UTC time, note
+    S->>D: Set Approved or Declined, increment Version, append history
+    S-->>W: Result
+    W->>D: Stage retry record and SaveChangesAsync
+    W-->>C: Result via service
+    C-->>R: 200 response DTO
+    Note over C,D: Authentication errors are 401,<br/>wrong role / assignment is 403

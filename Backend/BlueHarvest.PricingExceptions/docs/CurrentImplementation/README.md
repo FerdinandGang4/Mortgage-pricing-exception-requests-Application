@@ -17,6 +17,8 @@ These documents describe the current code and PostgreSQL migration, rather than 
 
 Sequence diagrams cover development identities and reviewer selection; request creation; shared write execution and retries; approval/decline; revisions; approved-discount lookup; history; and startup/migrations/seeding.
 
+The [current method reference](MethodReference.md) lists the controller actions, service methods and private helpers from the code as of 7 November 2026. Presentation overview diagrams `09-current-workflow-methods` and `10-current-read-methods` summarize the renamed calls. Entity relationships and schema are unchanged by this naming refactor.
+
 ## Important implementation distinctions
 
 - Six persisted entities; mortgage applications remain external ID references.
@@ -41,3 +43,5 @@ Sequence diagrams cover development identities and reviewer selection; request c
 Render the `.mmd` files with Mermaid CLI into matching `.svg` and `.png` files, then run `generate_documents.py documents` with Python and `python-docx` installed. Run `generate_documents.py pdfs` with PyMuPDF installed to generate PDF companions directly from the same diagram images and implementation notes. The PDFs use dedicated diagram pages for readability. Diagrams were syntax-checked by rendering with Mermaid CLI using Microsoft Edge.
 
 Generated Word/PDF documents are written directly to the parent backend docs directory. Superseded diagrams and duplicate exports have been removed; this directory retains the current editable sources and images.
+
+`tools/Update-MethodDocumentation.py` refreshes method identifiers in the generator and produces the method inventory. Mermaid rendering uses `mermaid-config.json` for detailed diagrams, `presentation-mermaid-config.json` for the two presentation summaries, and the local headless Edge path in `puppeteer-config.json`; adjust that browser path on another machine. `tools/Refresh-DesignAndPresentation.py` adds the current-code appendix to the original design and deck; it refuses duplicate appendices. Export the updated PowerPoint to its matching PDF after editing it.

@@ -16,7 +16,7 @@ Sources: DevelopmentAuthenticationHandler.cs; UsersController.cs; UserService.cs
 
 Same-key replays bypass the operation callback. A different key for an existing mortgage application hits the service duplicate check. MortgageApplicationId is an external reference, not a foreign key to a local mortgage table. One request per application is a service policy, not a unique database index in the current migration.
 
-Sources: PricingExceptionsController.CreatePricingExceptionRequestAsync; PricingExceptionService.CreateAsync, NewRevision, AppendHistory; ExecuteWriteAsync.
+Sources: PricingExceptionsController.CreatePricingExceptionRequestAsync; PricingExceptionService.CreatePricingExceptionRequestAsync, CreateRequestRevision, AppendRequestHistoryEntry; ExecuteIdempotentWriteAsync.
 
 ## Shared write execution and idempotent retries
 
@@ -24,7 +24,7 @@ Sources: PricingExceptionsController.CreatePricingExceptionRequestAsync; Pricing
 
 Scopes are create, revise:{requestId}, and review:{requestId}. The actor is part of the lookup. The saved ResponseStatusCode is set to 200 for review and 201 otherwise, but controllers actually choose HTTP status and Location on each response. Location is a nullable entity property and is not populated by this wrapper. The semaphore serializes only one API process; actor/scope/key has no database unique index yet.
 
-Sources: PricingExceptionService.ExecuteWriteAsync; PricingExceptionsDbContext.SaveChangesAsync / ProtectHistoricalRecords; InMemoryWriteLock.cs.
+Sources: PricingExceptionService.ExecuteIdempotentWriteAsync; PricingExceptionsDbContext.SaveChangesAsync / ProtectHistoricalRecords; InMemoryWriteLock.cs.
 
 ## Approve or decline the assigned revision
 
@@ -32,7 +32,7 @@ Sources: PricingExceptionService.ExecuteWriteAsync; PricingExceptionsDbContext.S
 
 The current request must be Pending and match both expected values. Assignment is independent of who last edited or viewed a record. A unique (RequestId, RevisionNumber) index on ReviewDecisions additionally enforces at most one decision per revision in PostgreSQL. The decision record has no direct foreign key to PricingExceptionRequest; it references RequestRevision.
 
-Sources: PricingExceptionsController.RecordPricingExceptionDecisionAsync; PricingExceptionService.ReviewAsync; ReviewDecision entity; UserService.GetUserWithRequiredRoleAsync.
+Sources: PricingExceptionsController.RecordPricingExceptionDecisionAsync; PricingExceptionService.ReviewPricingExceptionRequestAsync; ReviewDecision entity; UserService.GetUserWithRequiredRoleAsync.
 
 ## Revise terms and withdraw effective approval
 
@@ -40,7 +40,7 @@ Sources: PricingExceptionsController.RecordPricingExceptionDecisionAsync; Pricin
 
 Revision is allowed while Pending and after either decision. Even unchanged terms create a new revision. No old approval is deleted; it becomes historical because current revision and status change. Version increases on both revision and decision; revision number increases only when terms are submitted.
 
-Sources: PricingExceptionsController.SubmitPricingExceptionRevisionAsync; PricingExceptionService.SubmitRevisionAsync, CheckVersion, NewRevision; ApprovedDiscountService.GetAsync.
+Sources: PricingExceptionsController.SubmitPricingExceptionRevisionAsync; PricingExceptionService.SubmitRequestRevisionAsync, ValidateRequestVersionAndRevision, CreateRequestRevision; ApprovedDiscountService.GetAsync.
 
 ## Retrieve the effective approved discount
 
@@ -56,7 +56,7 @@ Sources: ApprovedDiscountsController.GetApprovedDiscountForMortgageApplicationAs
 
 Any known internal user may read history under current policy. The lock coordinates only writes in this process; the reads are not wrapped in a database snapshot transaction, so do not claim a cross-instance atomic snapshot. History uses request Version as Sequence. AsNoTracking reads avoid modifying submitted records.
 
-Sources: PricingExceptionsController.GetPricingExceptionHistoryAsync; PricingExceptionService.GetHistorySnapshotAsync / ReadRequestAsync; HistoryMapper.cs; HistoryTimeline.tsx.
+Sources: PricingExceptionsController.GetPricingExceptionHistoryAsync; PricingExceptionService.GetRequestHistorySnapshotAsync / ExecuteAuthorizedRequestReadAsync; HistoryMapper.cs; RequestHistory.tsx.
 
 ## Startup, PostgreSQL migrations and idempotent seeding
 

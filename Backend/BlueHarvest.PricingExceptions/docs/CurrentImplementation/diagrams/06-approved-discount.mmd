@@ -7,6 +7,7 @@ sequenceDiagram
     participant D as EF / PostgreSQL
     P->>C: GET /api/v1/mortgage-applications/{id}/approved-discount
     Note over P,C: Authenticated MortgageProcess<br/>role required
+    Note over C: GetApprovedDiscountForMortgage<br/>ApplicationAsync
     C->>S: GetAsync(applicationId, actorId)
     S->>D: Recheck stored MortgageProcess role
     S->>S: Require non-empty application GUID (400)

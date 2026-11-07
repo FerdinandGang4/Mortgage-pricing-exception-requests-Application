@@ -6,9 +6,10 @@ sequenceDiagram
     participant L as Singleton semaphore
     participant D as EF / PostgreSQL
     U->>C: GET /api/v1/pricing-exceptions/{id}/history
-    C->>S: GetHistorySnapshotAsync(id, actorId)
-    S->>D: GetRequiredAsync(actorId)
-    S->>L: ReadRequestAsync acquires shared semaphore
+    Note over C: GetPricingExceptionHistoryAsyn<br/>c
+    C->>S: GetRequestHistorySnapshotAsync(id, actorId)
+    S->>D: GetUserOrThrowAsync(actorId)
+    S->>L: ExecuteAuthorizedRequestReadAsync acquires shared semaphore
     S->>D: Confirm request exists
     alt Missing request
         S-->>C: NotFoundException (404)

@@ -1,0 +1,36 @@
+sequenceDiagram
+    autonumber
+    actor U as Demo user
+    participant UI as React
+    participant A as Auth handler
+    participant C as UsersController
+    participant S as UserService
+    participant D as EF / PostgreSQL
+    U->>UI: Select Demo User (stable seeded ID)
+    UI->>A: GET /api/v1/users/me + X-User-Id
+    alt Development and parseable user GUID
+        A->>D: Read user by ID
+        D-->>A: DisplayName and stored role
+        alt User exists
+            A->>C: ClaimsPrincipal (ID, name, role)
+    Note over C: GetCurrentUserProfileAsync
+            C->>S: GetUserOrThrowAsync(actorId)
+            S->>D: Read and validate internal user
+            S-->>C: User
+            C-->>UI: 200 UserResponseDto
+        else Unknown user
+            A-->>UI: Authentication failure (401)
+        end
+    else Not Development or invalid / missing GUID
+        A-->>UI: No identity / authentication failure (401)
+    end
+    opt Manager opens create dialog
+        UI->>A: GET /api/v1/users/reviewers
+        Note over A,C: Authenticate, require<br/>RelationshipManager role
+    Note over C: GetReviewersAsync
+        C->>S: GetReviewersAsync(actorId)
+        S->>D: Read role, select Reviewer users excluding actor
+        D-->>S: Reviewer users ordered by DisplayName
+        S-->>C: Eligible reviewers
+        C-->>UI: 200 reviewer dropdown data
+    end

@@ -10,6 +10,7 @@ import struct
 import textwrap
 import sys
 from datetime import date
+SNAPSHOT_DATE = '2026-11-07'
 
 HERE = Path(__file__).resolve().parent
 OUTPUT = HERE.parent
@@ -56,6 +57,7 @@ SEQUENCES = [
         D-->>A: DisplayName and stored role
         alt User exists
             A->>C: ClaimsPrincipal (ID, name, role)
+    Note over C: GetCurrentUserProfileAsync
             C->>S: GetUserOrThrowAsync(actorId)
             S->>D: Read and validate internal user
             S-->>C: User
@@ -69,6 +71,7 @@ SEQUENCES = [
     opt Manager opens create dialog
         UI->>A: GET /api/v1/users/reviewers
         Note over A,C: Authenticate; require RelationshipManager role
+    Note over C: GetReviewersAsync
         C->>S: GetReviewersAsync(actorId)
         S->>D: Read role; select Reviewer users excluding actor
         D-->>S: Reviewer users ordered by DisplayName
@@ -88,9 +91,10 @@ SEQUENCES = [
     M->>UI: Enter application GUID, bps, reason, reviewer
     UI->>C: POST /api/v1/pricing-exceptions + identity + key
     Note over C,S: Authentication, role and DTO validation occur before action logic
-    C->>S: CreateAsync(... actorId, idempotencyKey)
+    Note over C: CreatePricingExceptionRequestAsync
+    C->>S: CreatePricingExceptionRequestAsync(... actorId, idempotencyKey)
     S->>D: GetUserWithRequiredRoleAsync(RelationshipManager)
-    S->>W: ExecuteWriteAsync(actor, create, key, payload)
+    S->>W: ExecuteIdempotentWriteAsync(actor, create, key, payload)
     Note over W,D: Shared write wrapper handles lock and retries (diagram 03)
     W->>S: Run operation callback for a new key
     S->>S: Validate bps, reason and non-empty application GUID
@@ -108,12 +112,12 @@ SEQUENCES = [
         S-->>C: PricingExceptionResult
         C-->>UI: 201 DTO + Location pointing to request GET
     end''',
- 'PricingExceptionsController.CreatePricingExceptionRequestAsync; PricingExceptionService.CreateAsync, NewRevision, AppendHistory; ExecuteWriteAsync.',
+ 'PricingExceptionsController.CreatePricingExceptionRequestAsync; PricingExceptionService.CreatePricingExceptionRequestAsync, CreateRequestRevision, AppendRequestHistoryEntry; ExecuteIdempotentWriteAsync.',
  'Same-key replays bypass the operation callback. A different key for an existing mortgage application hits the service duplicate check. MortgageApplicationId is an external reference, not a foreign key to a local mortgage table. One request per application is a service policy, not a unique database index in the current migration.'),
 ('03-write-and-retry', 'Shared write execution and idempotent retries', '''sequenceDiagram
     autonumber
     participant S as Service entry point
-    participant W as ExecuteWriteAsync
+    participant W as ExecuteIdempotentWriteAsync
     participant L as Singleton semaphore
     participant D as EF / PostgreSQL
     S->>W: actor, scope, key, payload, callback
@@ -141,7 +145,7 @@ SEQUENCES = [
         end
     end
     Note over W,L: finally releases semaphore; other caught errors clear tracker and rethrow''',
- 'PricingExceptionService.ExecuteWriteAsync; PricingExceptionsDbContext.SaveChangesAsync / ProtectHistoricalRecords; InMemoryWriteLock.cs.',
+ 'PricingExceptionService.ExecuteIdempotentWriteAsync; PricingExceptionsDbContext.SaveChangesAsync / ProtectHistoricalRecords; InMemoryWriteLock.cs.',
  'Scopes are create, revise:{requestId}, and review:{requestId}. The actor is part of the lookup. The saved ResponseStatusCode is set to 200 for review and 201 otherwise, but controllers actually choose HTTP status and Location on each response. Location is a nullable entity property and is not populated by this wrapper. The semaphore serializes only one API process; actor/scope/key has no database unique index yet.'),
 ('04-review-decision', 'Approve or decline the assigned revision', '''sequenceDiagram
     autonumber
@@ -152,9 +156,10 @@ SEQUENCES = [
     participant D as EF / PostgreSQL
     R->>C: POST /api/v1/pricing-exceptions/{id}/decisions
     Note over R,C: Outcome, optional reason, expectedVersion, reviewedRevisionNumber, key
-    C->>S: ReviewAsync(... actorId)
+    Note over C: RecordPricingExceptionDecisionAsync
+    C->>S: ReviewPricingExceptionRequestAsync(... actorId)
     S->>D: GetUserWithRequiredRoleAsync(Reviewer)
-    S->>W: ExecuteWriteAsync(review:id, payload)
+    S->>W: ExecuteIdempotentWriteAsync(review:id, payload)
     W->>S: New-key callback after lock / replay lookup
     S->>D: Load request and validate outcome / reason
     S->>S: Reject creator and unassigned reviewer (403)
@@ -168,7 +173,7 @@ SEQUENCES = [
     W-->>C: Result via service
     C-->>R: 200 response DTO
     Note over C,D: Authentication errors are 401; wrong role / assignment is 403''',
- 'PricingExceptionsController.RecordPricingExceptionDecisionAsync; PricingExceptionService.ReviewAsync; ReviewDecision entity; UserService.GetUserWithRequiredRoleAsync.',
+ 'PricingExceptionsController.RecordPricingExceptionDecisionAsync; PricingExceptionService.ReviewPricingExceptionRequestAsync; ReviewDecision entity; UserService.GetUserWithRequiredRoleAsync.',
  'The current request must be Pending and match both expected values. Assignment is independent of who last edited or viewed a record. A unique (RequestId, RevisionNumber) index on ReviewDecisions additionally enforces at most one decision per revision in PostgreSQL. The decision record has no direct foreign key to PricingExceptionRequest; it references RequestRevision.'),
 ('05-submit-revision', 'Revise terms and withdraw effective approval', '''sequenceDiagram
     autonumber
@@ -179,9 +184,10 @@ SEQUENCES = [
     participant D as EF / PostgreSQL
     M->>C: POST /api/v1/pricing-exceptions/{id}/revisions
     Note over M,C: bps, reason, expectedVersion, expectedRevisionNumber, key
-    C->>S: SubmitRevisionAsync(... actorId)
+    Note over C: SubmitPricingExceptionRevisionAsync
+    C->>S: SubmitRequestRevisionAsync(... actorId)
     S->>D: GetUserWithRequiredRoleAsync(RelationshipManager)
-    S->>W: ExecuteWriteAsync(revise:id, payload)
+    S->>W: ExecuteIdempotentWriteAsync(revise:id, payload)
     W->>S: New-key callback after lock / replay lookup
     S->>S: Validate terms
     S->>D: Find tracked request (404 if missing)
@@ -194,7 +200,7 @@ SEQUENCES = [
     W-->>C: Result via service
     C-->>M: 201 response DTO + request Location
     Note over M,D: Discount lookup now returns 404 until the new revision is approved''',
- 'PricingExceptionsController.SubmitPricingExceptionRevisionAsync; PricingExceptionService.SubmitRevisionAsync, CheckVersion, NewRevision; ApprovedDiscountService.GetAsync.',
+ 'PricingExceptionsController.SubmitPricingExceptionRevisionAsync; PricingExceptionService.SubmitRequestRevisionAsync, ValidateRequestVersionAndRevision, CreateRequestRevision; ApprovedDiscountService.GetAsync.',
  'Revision is allowed while Pending and after either decision. Even unchanged terms create a new revision. No old approval is deleted; it becomes historical because current revision and status change. Version increases on both revision and decision; revision number increases only when terms are submitted.'),
 ('06-approved-discount', 'Retrieve the effective approved discount', '''sequenceDiagram
     autonumber
@@ -205,6 +211,7 @@ SEQUENCES = [
     participant D as EF / PostgreSQL
     P->>C: GET /api/v1/mortgage-applications/{id}/approved-discount
     Note over P,C: Authenticated MortgageProcess role required
+    Note over C: GetApprovedDiscountForMortgageApplicationAsync
     C->>S: GetAsync(applicationId, actorId)
     S->>D: Recheck stored MortgageProcess role
     S->>S: Require non-empty application GUID (400)
@@ -231,9 +238,10 @@ SEQUENCES = [
     participant L as Singleton semaphore
     participant D as EF / PostgreSQL
     U->>C: GET /api/v1/pricing-exceptions/{id}/history
-    C->>S: GetHistorySnapshotAsync(id, actorId)
+    Note over C: GetPricingExceptionHistoryAsync
+    C->>S: GetRequestHistorySnapshotAsync(id, actorId)
     S->>D: GetUserOrThrowAsync(actorId)
-    S->>L: ReadRequestAsync acquires shared semaphore
+    S->>L: ExecuteAuthorizedRequestReadAsync acquires shared semaphore
     S->>D: Confirm request exists
     alt Missing request
         S-->>C: NotFoundException (404)
@@ -247,7 +255,7 @@ SEQUENCES = [
     end
     Note over S,L: finally releases semaphore
     Note over U,D: React displays events newest first using Sequence''',
- 'PricingExceptionsController.GetPricingExceptionHistoryAsync; PricingExceptionService.GetHistorySnapshotAsync / ReadRequestAsync; HistoryMapper.cs; HistoryTimeline.tsx.',
+ 'PricingExceptionsController.GetPricingExceptionHistoryAsync; PricingExceptionService.GetRequestHistorySnapshotAsync / ExecuteAuthorizedRequestReadAsync; HistoryMapper.cs; RequestHistory.tsx.',
  'Any known internal user may read history under current policy. The lock coordinates only writes in this process; the reads are not wrapped in a database snapshot transaction, so do not claim a cross-instance atomic snapshot. History uses request Version as Sequence. AsNoTracking reads avoid modifying submitted records.'),
 ('08-startup', 'Startup, PostgreSQL migrations and idempotent seeding', '''sequenceDiagram
     autonumber
@@ -353,9 +361,9 @@ def documents():
         for name in ('Title', 'Heading 1', 'Heading 2'):
             d.styles[name].font.color.rgb = RGBColor.from_string('007E87')
         sec.header.paragraphs[0].text = 'BLUE HARVEST | CURRENT CODE DOCUMENTATION'
-        sec.footer.paragraphs[0].text = 'Source-derived snapshot • PostgreSQL implementation • Generated ' + date.today().isoformat()
+        sec.footer.paragraphs[0].text = 'Source-derived snapshot • PostgreSQL implementation • Generated ' + SNAPSHOT_DATE
         d.add_heading(title, 0)
-        d.add_paragraph('Generated from the repository code. Earlier design documents remain unchanged and may describe previous proposals.')
+        d.add_paragraph('Generated from the repository code. Method names reflect the current controllers, service interfaces and private helpers. Entity relationships are unchanged by the naming refactor.')
         return d
     def image(d, name, maxh=5.15, maxw=10.4):
         p = DIAGRAMS / (name + '.png')
@@ -390,7 +398,7 @@ def documents():
     d.save(OUTPUT / 'BlueHarvest_Current_Entity_Relationships_Final.docx')
     d = doc('Sequence diagrams — current application workflows', landscape=False)
     d.add_paragraph('Eight diagrams cover identity/reviewer selection, creation, shared retries, decisions, revisions, discount lookup, history, and startup. Common HTTP authentication and DTO validation are condensed in workflow diagrams; diagram 01 expands identity handling.')
-    d.add_paragraph('All writes reuse ExecuteWriteAsync. It coordinates a single API process and persists state/history/retry records in one SaveChanges call. The documentation does not imply multi-instance transaction or uniqueness guarantees that the code does not implement.')
+    d.add_paragraph('All writes reuse ExecuteIdempotentWriteAsync. It coordinates a single API process and persists state/history/retry records in one SaveChanges call. The documentation does not imply multi-instance transaction or uniqueness guarantees that the code does not implement.')
     for slug, title, source, references, note in SEQUENCES:
         d.add_page_break()
         d.add_heading(title, 1)

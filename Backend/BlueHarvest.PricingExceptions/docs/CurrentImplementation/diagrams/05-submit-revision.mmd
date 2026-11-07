@@ -7,9 +7,10 @@ sequenceDiagram
     participant D as EF / PostgreSQL
     M->>C: POST /api/v1/pricing-exceptions/{id}/revisions
     Note over M,C: bps, reason, expectedVersion,<br/>expectedRevisionNumber, key
-    C->>S: SubmitRevisionAsync(... actorId)
-    S->>D: RequireRoleAsync(RelationshipManager)
-    S->>W: ExecuteWriteAsync(revise:id, payload)
+    Note over C: SubmitPricingExceptionRevision<br/>Async
+    C->>S: SubmitRequestRevisionAsync(... actorId)
+    S->>D: GetUserWithRequiredRoleAsync(RelationshipManager)
+    S->>W: ExecuteIdempotentWriteAsync(revise:id, payload)
     W->>S: New-key callback after lock / replay lookup
     S->>S: Validate terms
     S->>D: Find tracked request (404 if missing)

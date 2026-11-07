@@ -1,0 +1,5 @@
+{
+  "theme": "neutral",
+  "sequence": { "useMaxWidth": false, "wrap": true, "width": 185, "messageFontSize": 15, "actorFontSize": 15 },
+  "er": { "useMaxWidth": false }
+}

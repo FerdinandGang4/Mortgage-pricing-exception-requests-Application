@@ -1,0 +1,31 @@
+sequenceDiagram
+    autonumber
+    participant S as Service entry point
+    participant W as ExecuteIdempotentWriteAsync
+    participant L as Singleton semaphore
+    participant D as EF / PostgreSQL
+    S->>W: actor, scope, key, payload, callback
+    W->>W: Validate key length, SHA256(serialized payload)
+    W->>L: WaitAsync(cancellationToken)
+    L-->>W: Acquired in this API process
+    W->>D: Clear tracker, find actor + scope + key
+    alt Saved record with same input hash
+        D-->>W: Saved ResponseJson
+        W-->>S: Deserialize and replay original result (no callback)
+    else Saved record with different hash
+        W-->>S: ConflictException (HTTP 409)
+    else No saved record
+        W->>S: Execute operation callback
+        S-->>W: Result with staged workflow / history changes
+        W->>D: Stage IdempotencyRecord with serialized result
+        W->>D: SaveChangesAsync (historical-record guard)
+        Note over W,D: PostgreSQL transaction saves<br/>staged changes together
+        alt Successful save
+            D-->>W: Committed
+            W-->>S: Original operation result
+        else EF concurrency exception
+            W->>D: Clear tracker
+            W-->>S: ConflictException (HTTP 409)
+        end
+    end
+    Note over W,L: finally releases semaphore,<br/>other caught errors clear<br/>tracker and rethrow

@@ -13,7 +13,8 @@ sequenceDiagram
         D-->>A: DisplayName and stored role
         alt User exists
             A->>C: ClaimsPrincipal (ID, name, role)
-            C->>S: GetRequiredAsync(actorId)
+    Note over C: GetCurrentUserProfileAsync
+            C->>S: GetUserOrThrowAsync(actorId)
             S->>D: Read and validate internal user
             S-->>C: User
             C-->>UI: 200 UserResponseDto
@@ -26,6 +27,7 @@ sequenceDiagram
     opt Manager opens create dialog
         UI->>A: GET /api/v1/users/reviewers
         Note over A,C: Authenticate, require<br/>RelationshipManager role
+    Note over C: GetReviewersAsync
         C->>S: GetReviewersAsync(actorId)
         S->>D: Read role, select Reviewer users excluding actor
         D-->>S: Reviewer users ordered by DisplayName
