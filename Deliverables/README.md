@@ -127,7 +127,7 @@ Integrate trusted sign-in and mortgage application validation, confirm the busin
 | Sequence diagrams and explanations | [Word sequence document](../Documentation/BlueHarvest_Current_Sequence_Diagrams_Final.docx) |
 | Entity relationships and data model | [Word entity document](../Documentation/BlueHarvest_Current_Entity_Relationships_Final.docx) |
 | Local execution | [Word Docker guide](../Documentation/BlueHarvest_Docker_Clear_Instructions.docx) |
-| Test execution and validation | [Backend test guide](../Documentation/Testing/README.md), [frontend test guide](../Documentation/Frontend/TESTING.md), [validation record](../Documentation/Architecture/ValidationResults.md) |
+| Test execution and validation | [Backend test guide](../Documentation/Testing/BackendTestingGuide.md), [frontend test guide](../Documentation/Frontend/TESTING.md), [validation record](../Documentation/Architecture/ValidationResults.md) |
 | AI-assisted development | [Development log](../Documentation/Architecture/AiDevelopmentLog.md) |
 | Assignment presentation | [PowerPoint](../Documentation/BlueHarvest_Assignment_Presentation.pptx) |
 
