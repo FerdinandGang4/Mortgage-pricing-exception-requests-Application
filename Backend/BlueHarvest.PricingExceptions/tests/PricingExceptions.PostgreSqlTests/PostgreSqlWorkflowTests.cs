@@ -53,9 +53,9 @@ public sealed class PostgreSqlWorkflowTests(PostgreSqlFixture fixture) : IAsyncL
         var declined = await Review(revised, DecisionOutcome.Declined);
         using var scope = provider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<IPricingExceptionService>();
-        var loaded = await service.GetAsync(created.Id, Manager);
-        var history = await service.GetHistorySnapshotAsync(created.Id, Manager);
-        var retried = await service.CreateAsync(application, 50, "Competitive mortgage offer", Reviewer, Manager, "create");
+        var loaded = await service.GetPricingExceptionRequestAsync(created.Id, Manager);
+        var history = await service.GetRequestHistorySnapshotAsync(created.Id, Manager);
+        var retried = await service.CreatePricingExceptionRequestAsync(application, 50, "Competitive mortgage offer", Reviewer, Manager, "create");
 
         // Assert
         Assert.Equal(declined with { DecidedAtUtc = PostgreSqlTimestamp(declined.DecidedAtUtc) }, loaded);
@@ -137,10 +137,10 @@ public sealed class PostgreSqlWorkflowTests(PostgreSqlFixture fixture) : IAsyncL
         var service = scope.ServiceProvider.GetRequiredService<IPricingExceptionService>();
 
         // Act and Assert: one request per application is currently a service rule.
-        await Assert.ThrowsAsync<ConflictException>(() => service.CreateAsync(application, 50, "Competitive mortgage offer", Reviewer, Manager, "another-create"));
+        await Assert.ThrowsAsync<ConflictException>(() => service.CreatePricingExceptionRequestAsync(application, 50, "Competitive mortgage offer", Reviewer, Manager, "another-create"));
         var database = scope.ServiceProvider.GetRequiredService<PricingExceptionsDbContext>();
         Assert.Single(await database.PricingExceptionRequests.ToListAsync());
-        Assert.Single((await service.GetHistorySnapshotAsync(created.Id, Manager)).Events);
+        Assert.Single((await service.GetRequestHistorySnapshotAsync(created.Id, Manager)).Events);
     }
 
     // 3. Transactions and consistency
@@ -267,10 +267,10 @@ public sealed class PostgreSqlWorkflowTests(PostgreSqlFixture fixture) : IAsyncL
         Assert.Single(outcomes, success => success);
         using var scope = provider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<IPricingExceptionService>();
-        var history = await service.GetHistorySnapshotAsync(created.Id, Manager);
+        var history = await service.GetRequestHistorySnapshotAsync(created.Id, Manager);
         Assert.Equal(2, history.Events.Count);
         Assert.Equal(2, history.Revisions.Count + history.Decisions.Count);
-        var current = await service.GetAsync(created.Id, Manager);
+        var current = await service.GetPricingExceptionRequestAsync(created.Id, Manager);
         Assert.Equal(2, current.Version);
         Assert.Equal(history.Decisions.Count == 1 ? RequestStatus.Approved : RequestStatus.Pending, current.Status);
         Assert.Equal(history.Revisions.Count, current.RevisionNumber);
@@ -280,21 +280,21 @@ public sealed class PostgreSqlWorkflowTests(PostgreSqlFixture fixture) : IAsyncL
     {
         using var scope = provider.CreateScope();
         return await scope.ServiceProvider.GetRequiredService<IPricingExceptionService>()
-            .CreateAsync(application ?? Guid.NewGuid(), 50, "Competitive mortgage offer", Reviewer, Manager, "create");
+            .CreatePricingExceptionRequestAsync(application ?? Guid.NewGuid(), 50, "Competitive mortgage offer", Reviewer, Manager, "create");
     }
 
     private async Task<PricingExceptionResult> Review(PricingExceptionResult request, DecisionOutcome outcome)
     {
         using var scope = provider.CreateScope();
         return await scope.ServiceProvider.GetRequiredService<IPricingExceptionService>()
-            .ReviewAsync(request.Id, outcome, "Independent mortgage review", request.Version, request.RevisionNumber, Reviewer, "review-" + outcome + request.RevisionNumber);
+            .ReviewPricingExceptionRequestAsync(request.Id, outcome, "Independent mortgage review", request.Version, request.RevisionNumber, Reviewer, "review-" + outcome + request.RevisionNumber);
     }
 
     private async Task<PricingExceptionResult> Revise(PricingExceptionResult request)
     {
         using var scope = provider.CreateScope();
         return await scope.ServiceProvider.GetRequiredService<IPricingExceptionService>()
-            .SubmitRevisionAsync(request.Id, 75, "Updated competitive offer", request.Version, request.RevisionNumber, Manager, "revise");
+            .SubmitRequestRevisionAsync(request.Id, 75, "Updated competitive offer", request.Version, request.RevisionNumber, Manager, "revise");
     }
 
     private static ReviewDecision NewDecision(Guid requestId, DecisionOutcome outcome) => new()

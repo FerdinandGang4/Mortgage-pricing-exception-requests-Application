@@ -60,8 +60,8 @@ public sealed class DevelopmentDataSeederTests
         using var gate = new InMemoryWriteLock();
         var service = new PricingExceptionService(database, new UserService(database), gate, TimeProvider.System);
         var application = Guid.NewGuid();
-        var created = await service.CreateAsync(application, 50, "Existing request", reviewer, manager, "create");
-        await service.ReviewAsync(created.Id, DecisionOutcome.Approved, "Existing decision", 1, 1, reviewer, "review");
+        var created = await service.CreatePricingExceptionRequestAsync(application, 50, "Existing request", reviewer, manager, "create");
+        await service.ReviewPricingExceptionRequestAsync(created.Id, DecisionOutcome.Approved, "Existing decision", 1, 1, reviewer, "review");
 
         await DevelopmentDataSeeder.SeedAsync(database);
         await DevelopmentDataSeeder.SeedAsync(database);
@@ -79,6 +79,6 @@ public sealed class DevelopmentDataSeederTests
         Assert.Single(await database.RequestRevisions.ToListAsync());
         Assert.Equal(2, await database.HistoryEntries.CountAsync());
         Assert.Equal(2, await database.IdempotencyRecords.CountAsync());
-        Assert.Equal(created, await service.CreateAsync(application, 50, "Existing request", reviewer, manager, "create"));
+        Assert.Equal(created, await service.CreatePricingExceptionRequestAsync(application, 50, "Existing request", reviewer, manager, "create"));
     }
 }

@@ -17,34 +17,7 @@ public sealed class PricingExceptionService(
     PricingExceptionsDbContext database, IUserService users,
     InMemoryWriteLock writeLock, TimeProvider clock) : IPricingExceptionService
 {
-    public async Task<IReadOnlyList<PricingExceptionResult>> ListAsync(Guid actorId, CancellationToken cancellationToken = default)
-    {
-        await users.GetRequiredAsync(actorId, cancellationToken);
-        await writeLock.Semaphore.WaitAsync(cancellationToken);
-        try
-        {
-            var requests = await database.PricingExceptionRequests.AsNoTracking()
-                .OrderByDescending(request => request.CreatedAtUtc).ThenBy(request => request.Id)
-                .ToListAsync(cancellationToken);
-            // Match terms and decisions to each request's current revision, preserving older snapshots.
-            var revisions = (await database.RequestRevisions.AsNoTracking().ToListAsync(cancellationToken))
-                .ToDictionary(revision => (revision.RequestId, revision.RevisionNumber));
-            var decisions = (await database.ReviewDecisions.AsNoTracking().ToListAsync(cancellationToken))
-                .ToDictionary(decision => (decision.RequestId, decision.RevisionNumber));
-            return requests.Select(request =>
-            {
-                var key = (request.Id, request.CurrentRevisionNumber);
-                decisions.TryGetValue(key, out var decision);
-                return Result(request, revisions[key], decision);
-            }).ToList();
-        }
-        finally
-        {
-            writeLock.Semaphore.Release();
-        }
-    }
-
-    public async Task<PricingExceptionResult> CreateAsync(Guid applicationId, int discountBasisPoints,
+    public async Task<PricingExceptionResult> CreatePricingExceptionRequestAsync(Guid applicationId, int discountBasisPoints,
         string reason, Guid reviewerId, Guid actorId, string idempotencyKey, CancellationToken cancellationToken = default)
     {
         var requester = await users.RequireRoleAsync(actorId, UserRole.RelationshipManager, cancellationToken);
@@ -81,22 +54,7 @@ public sealed class PricingExceptionService(
         }, cancellationToken);
     }
 
-    public async Task<PricingExceptionResult> GetAsync(Guid requestId, Guid actorId, CancellationToken cancellationToken = default)
-    {
-        return await ReadRequestAsync(requestId, actorId, async () =>
-        {
-            var request = await database.PricingExceptionRequests.AsNoTracking()
-                .SingleOrDefaultAsync(x => x.Id == requestId, cancellationToken)
-                ?? throw new NotFoundException("The pricing exception request was not found.");
-            var revision = await database.RequestRevisions.AsNoTracking().SingleAsync(
-                x => x.RequestId == requestId && x.RevisionNumber == request.CurrentRevisionNumber, cancellationToken);
-            var decision = await database.ReviewDecisions.AsNoTracking().SingleOrDefaultAsync(
-                x => x.RequestId == requestId && x.RevisionNumber == request.CurrentRevisionNumber, cancellationToken);
-            return Result(request, revision, decision);
-        }, cancellationToken);
-    }
-
-    public async Task<PricingExceptionResult> SubmitRevisionAsync(Guid requestId, int discountBasisPoints,
+    public async Task<PricingExceptionResult> SubmitRequestRevisionAsync(Guid requestId, int discountBasisPoints,
         string reason, long expectedVersion, int expectedRevisionNumber, Guid actorId,
         string idempotencyKey, CancellationToken cancellationToken = default)
     {
@@ -122,7 +80,7 @@ public sealed class PricingExceptionService(
         }, cancellationToken);
     }
 
-    public async Task<PricingExceptionResult> ReviewAsync(Guid requestId, DecisionOutcome outcome,
+    public async Task<PricingExceptionResult> ReviewPricingExceptionRequestAsync(Guid requestId, DecisionOutcome outcome,
         string? reason, long expectedVersion, int reviewedRevisionNumber, Guid actorId,
         string idempotencyKey, CancellationToken cancellationToken = default)
     {
@@ -165,21 +123,63 @@ public sealed class PricingExceptionService(
         }, cancellationToken);
     }
 
-    public async Task<IReadOnlyList<HistoryEntry>> GetHistoryAsync(Guid requestId, Guid actorId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<PricingExceptionResult>> ListPricingExceptionRequestsAsync(Guid actorId, CancellationToken cancellationToken = default)
+    {
+        await users.GetRequiredAsync(actorId, cancellationToken);
+        await writeLock.Semaphore.WaitAsync(cancellationToken);
+        try
+        {
+            var requests = await database.PricingExceptionRequests.AsNoTracking()
+                .OrderByDescending(request => request.CreatedAtUtc).ThenBy(request => request.Id)
+                .ToListAsync(cancellationToken);
+            // Match terms and decisions to each request's current revision, preserving older snapshots.
+            var revisions = (await database.RequestRevisions.AsNoTracking().ToListAsync(cancellationToken))
+                .ToDictionary(revision => (revision.RequestId, revision.RevisionNumber));
+            var decisions = (await database.ReviewDecisions.AsNoTracking().ToListAsync(cancellationToken))
+                .ToDictionary(decision => (decision.RequestId, decision.RevisionNumber));
+            return requests.Select(request =>
+            {
+                var key = (request.Id, request.CurrentRevisionNumber);
+                decisions.TryGetValue(key, out var decision);
+                return Result(request, revisions[key], decision);
+            }).ToList();
+        }
+        finally
+        {
+            writeLock.Semaphore.Release();
+        }
+    }
+
+    public async Task<PricingExceptionResult> GetPricingExceptionRequestAsync(Guid requestId, Guid actorId, CancellationToken cancellationToken = default)
+    {
+        return await ReadRequestAsync(requestId, actorId, async () =>
+        {
+            var request = await database.PricingExceptionRequests.AsNoTracking()
+                .SingleOrDefaultAsync(x => x.Id == requestId, cancellationToken)
+                ?? throw new NotFoundException("The pricing exception request was not found.");
+            var revision = await database.RequestRevisions.AsNoTracking().SingleAsync(
+                x => x.RequestId == requestId && x.RevisionNumber == request.CurrentRevisionNumber, cancellationToken);
+            var decision = await database.ReviewDecisions.AsNoTracking().SingleOrDefaultAsync(
+                x => x.RequestId == requestId && x.RevisionNumber == request.CurrentRevisionNumber, cancellationToken);
+            return Result(request, revision, decision);
+        }, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<HistoryEntry>> GetRequestHistoryAsync(Guid requestId, Guid actorId, CancellationToken cancellationToken = default)
     {
         return await ReadRequestAsync<IReadOnlyList<HistoryEntry>>(requestId, actorId, async () =>
             await database.HistoryEntries.AsNoTracking().Where(x => x.RequestId == requestId)
                 .OrderBy(x => x.Sequence).ToListAsync(cancellationToken), cancellationToken);
     }
 
-    public async Task<IReadOnlyList<RequestRevision>> GetRevisionsAsync(Guid requestId, Guid actorId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<RequestRevision>> GetRequestRevisionsAsync(Guid requestId, Guid actorId, CancellationToken cancellationToken = default)
     {
         return await ReadRequestAsync<IReadOnlyList<RequestRevision>>(requestId, actorId, async () =>
             await database.RequestRevisions.AsNoTracking().Where(x => x.RequestId == requestId)
                 .OrderBy(x => x.RevisionNumber).ToListAsync(cancellationToken), cancellationToken);
     }
 
-    public async Task<IReadOnlyList<ReviewDecision>> GetDecisionsAsync(Guid requestId, Guid actorId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ReviewDecision>> GetReviewDecisionsAsync(Guid requestId, Guid actorId, CancellationToken cancellationToken = default)
     {
         return await ReadRequestAsync<IReadOnlyList<ReviewDecision>>(requestId, actorId, async () =>
             await database.ReviewDecisions.AsNoTracking().Where(x => x.RequestId == requestId)
@@ -187,7 +187,7 @@ public sealed class PricingExceptionService(
     }
 
     // Read all history collections under one lock so a concurrent write cannot split the snapshot.
-    public async Task<RequestHistoryResult> GetHistorySnapshotAsync(Guid requestId, Guid actorId, CancellationToken cancellationToken = default)
+    public async Task<RequestHistoryResult> GetRequestHistorySnapshotAsync(Guid requestId, Guid actorId, CancellationToken cancellationToken = default)
         => await ReadRequestAsync(requestId, actorId, async () => new RequestHistoryResult(
             await database.HistoryEntries.AsNoTracking().Where(x => x.RequestId == requestId)
                 .OrderBy(x => x.Sequence).ToListAsync(cancellationToken),
@@ -196,6 +196,7 @@ public sealed class PricingExceptionService(
             await database.ReviewDecisions.AsNoTracking().Where(x => x.RequestId == requestId)
                 .OrderBy(x => x.RevisionNumber).ToListAsync(cancellationToken)), cancellationToken);
 
+    // Request reads and lookup.
     // Reads share the write lock because the InMemory provider offers no transactional snapshot.
     private async Task<T> ReadRequestAsync<T>(Guid requestId, Guid actorId, Func<Task<T>> read, CancellationToken cancellationToken)
     {
@@ -213,6 +214,11 @@ public sealed class PricingExceptionService(
         }
     }
 
+    private async Task<PricingExceptionRequest> FindAsync(Guid id, CancellationToken cancellationToken)
+        => await database.PricingExceptionRequests.SingleOrDefaultAsync(x => x.Id == id, cancellationToken)
+            ?? throw new NotFoundException("The pricing exception request was not found.");
+
+    // Write execution, idempotency, and concurrency handling.
     private async Task<PricingExceptionResult> ExecuteWriteAsync(Guid actorId, string scope, string key,
         object payload, Func<Task<PricingExceptionResult>> operation, CancellationToken cancellationToken)
     {
@@ -281,10 +287,7 @@ public sealed class PricingExceptionService(
         }
     }
 
-    private async Task<PricingExceptionRequest> FindAsync(Guid id, CancellationToken cancellationToken)
-        => await database.PricingExceptionRequests.SingleOrDefaultAsync(x => x.Id == id, cancellationToken)
-            ?? throw new NotFoundException("The pricing exception request was not found.");
-
+    // Business term and version validation.
     private static void ValidateTerms(int discount, string reason)
     {
         if (discount is < 1 or > 500)
@@ -301,6 +304,7 @@ public sealed class PricingExceptionService(
             throw new ConflictException("The request version or revision is stale.");
     }
 
+    // Revision and audit history creation.
     private static RequestRevision NewRevision(PricingExceptionRequest request, int discount, string reason, Guid actor, DateTimeOffset now)
         => new()
         {
@@ -325,6 +329,7 @@ public sealed class PricingExceptionService(
             OccurredAtUtc = now
         });
 
+    // Current request result mapping.
     private static PricingExceptionResult Result(PricingExceptionRequest request, RequestRevision revision, ReviewDecision? decision = null)
         => new(request.Id, request.MortgageApplicationId, request.CreatedByUserId, request.Status,
             revision.RevisionNumber, request.Version, revision.DiscountBasisPoints, revision.Reason,

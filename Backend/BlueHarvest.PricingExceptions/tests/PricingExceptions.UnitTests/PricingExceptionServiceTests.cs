@@ -51,7 +51,7 @@ public sealed class PricingExceptionServiceTests : IDisposable
         var application = Guid.NewGuid();
 
         // Act
-        var created = await service.CreateAsync(application, 50, "Competitive offer", reviewer, manager, "create");
+        var created = await service.CreatePricingExceptionRequestAsync(application, 50, "Competitive offer", reviewer, manager, "create");
 
         // Assert
         Assert.Equal(1, created.RevisionNumber);
@@ -63,11 +63,11 @@ public sealed class PricingExceptionServiceTests : IDisposable
         Assert.Equal("Manager", created.RequesterName);
         Assert.Equal(reviewer, created.AssignedReviewerId);
         Assert.Equal("Reviewer", created.AssignedReviewerName);
-        Assert.Equal(created, await service.GetAsync(created.Id, manager));
+        Assert.Equal(created, await service.GetPricingExceptionRequestAsync(created.Id, manager));
     }
 
     // 2. Request Submission
-    // CreateAsync creates revision 1 and submits it immediately as Pending; there is no draft/submit operation.
+    // CreatePricingExceptionRequestAsync creates revision 1 and submits it immediately as Pending; there is no draft/submit operation.
 
     [Fact]
     public async Task CreatingRequestSubmitsItForReviewWithPendingStatus()
@@ -80,7 +80,7 @@ public sealed class PricingExceptionServiceTests : IDisposable
         var created = await CreateRequestAsync(service);
 
         // Assert
-        var availableForReview = Assert.Single(await service.ListAsync(reviewer));
+        var availableForReview = Assert.Single(await service.ListPricingExceptionRequestsAsync(reviewer));
         Assert.Equal(created, availableForReview);
         Assert.Equal(RequestStatus.Pending, availableForReview.Status);
         Assert.Equal(reviewer, availableForReview.AssignedReviewerId);
@@ -103,7 +103,7 @@ public sealed class PricingExceptionServiceTests : IDisposable
         var decidedAt = clock.GetUtcNow();
 
         // Act
-        var approved = await service.ReviewAsync(created.Id, DecisionOutcome.Approved, "Accepted", 1, 1, reviewer, "approve");
+        var approved = await service.ReviewPricingExceptionRequestAsync(created.Id, DecisionOutcome.Approved, "Accepted", 1, 1, reviewer, "approve");
 
         // Assert
         Assert.Equal(RequestStatus.Approved, approved.Status);
@@ -111,8 +111,8 @@ public sealed class PricingExceptionServiceTests : IDisposable
         Assert.Equal(reviewer, approved.ReviewerId);
         Assert.Equal("Reviewer", approved.ReviewerName);
         Assert.Equal(decidedAt, approved.DecidedAtUtc);
-        Assert.Equal(approved, await service.GetAsync(created.Id, manager));
-        var decision = Assert.Single(await service.GetDecisionsAsync(created.Id, manager));
+        Assert.Equal(approved, await service.GetPricingExceptionRequestAsync(created.Id, manager));
+        var decision = Assert.Single(await service.GetReviewDecisionsAsync(created.Id, manager));
         Assert.Equal(DecisionOutcome.Approved, decision.Outcome);
         Assert.Equal("Accepted", decision.ReviewReason);
         Assert.Equal(reviewer, decision.ReviewedByUserId);
@@ -128,20 +128,20 @@ public sealed class PricingExceptionServiceTests : IDisposable
         using var scope = provider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<IPricingExceptionService>();
         var application = Guid.NewGuid();
-        var created = await service.CreateAsync(application, 50, "Offer", reviewer, manager, "create");
+        var created = await service.CreatePricingExceptionRequestAsync(application, 50, "Offer", reviewer, manager, "create");
         clock.Advance(TimeSpan.FromMinutes(5));
         var decidedAt = clock.GetUtcNow();
 
         // Act
-        var declined = await service.ReviewAsync(created.Id, DecisionOutcome.Declined, "Not eligible", 1, 1, reviewer, "decline");
+        var declined = await service.ReviewPricingExceptionRequestAsync(created.Id, DecisionOutcome.Declined, "Not eligible", 1, 1, reviewer, "decline");
 
         // Assert
         Assert.Equal(RequestStatus.Declined, declined.Status);
         Assert.Equal(reviewer, declined.ReviewerId);
         Assert.Equal("Reviewer", declined.ReviewerName);
         Assert.Equal(decidedAt, declined.DecidedAtUtc);
-        Assert.Equal(declined, await service.GetAsync(created.Id, manager));
-        var decision = Assert.Single(await service.GetDecisionsAsync(created.Id, manager));
+        Assert.Equal(declined, await service.GetPricingExceptionRequestAsync(created.Id, manager));
+        var decision = Assert.Single(await service.GetReviewDecisionsAsync(created.Id, manager));
         Assert.Equal(DecisionOutcome.Declined, decision.Outcome);
         Assert.Equal("Not eligible", decision.ReviewReason);
         Assert.Equal(reviewer, decision.ReviewedByUserId);
@@ -157,8 +157,8 @@ public sealed class PricingExceptionServiceTests : IDisposable
         using var scope = provider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<IPricingExceptionService>();
         var application = Guid.NewGuid();
-        var created = await service.CreateAsync(application, 50, "Offer", reviewer, manager, "create");
-        var approved = await service.ReviewAsync(created.Id, DecisionOutcome.Approved, "Accepted", 1, 1, reviewer, "approve");
+        var created = await service.CreatePricingExceptionRequestAsync(application, 50, "Offer", reviewer, manager, "create");
+        var approved = await service.ReviewPricingExceptionRequestAsync(created.Id, DecisionOutcome.Approved, "Accepted", 1, 1, reviewer, "approve");
 
         // Act
         var discount = await scope.ServiceProvider.GetRequiredService<IApprovedDiscountService>().GetAsync(application, mortgageProcess);
@@ -182,9 +182,9 @@ public sealed class PricingExceptionServiceTests : IDisposable
         using var scope = provider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<IPricingExceptionService>();
         var application = Guid.NewGuid();
-        var created = await service.CreateAsync(application, 50, "Offer", reviewer, manager, "create");
+        var created = await service.CreatePricingExceptionRequestAsync(application, 50, "Offer", reviewer, manager, "create");
         if (status == RequestStatus.Declined)
-            await service.ReviewAsync(created.Id, DecisionOutcome.Declined, "Not eligible", 1, 1, reviewer, "decline");
+            await service.ReviewPricingExceptionRequestAsync(created.Id, DecisionOutcome.Declined, "Not eligible", 1, 1, reviewer, "decline");
 
         // Act and Assert
         Assert.Null(await scope.ServiceProvider.GetRequiredService<IApprovedDiscountService>().GetAsync(application, mortgageProcess));
@@ -202,10 +202,10 @@ public sealed class PricingExceptionServiceTests : IDisposable
         var service = scope.ServiceProvider.GetRequiredService<IPricingExceptionService>();
         var created = await CreateRequestAsync(service);
         if (status == RequestStatus.Declined)
-            created = await service.ReviewAsync(created.Id, DecisionOutcome.Declined, "Not eligible", 1, 1, reviewer, "decline");
+            created = await service.ReviewPricingExceptionRequestAsync(created.Id, DecisionOutcome.Declined, "Not eligible", 1, 1, reviewer, "decline");
 
         // Act
-        var revised = await service.SubmitRevisionAsync(created.Id, 60, "Updated offer", created.Version, 1, manager, "revise");
+        var revised = await service.SubmitRequestRevisionAsync(created.Id, 60, "Updated offer", created.Version, 1, manager, "revise");
 
         // Assert
         Assert.Equal(RequestStatus.Pending, revised.Status);
@@ -214,7 +214,7 @@ public sealed class PricingExceptionServiceTests : IDisposable
         Assert.Equal(60, revised.DiscountBasisPoints);
         Assert.Equal("Updated offer", revised.Reason);
         Assert.Equal(manager, revised.CreatedByUserId);
-        Assert.Equal(revised, await service.GetAsync(created.Id, manager));
+        Assert.Equal(revised, await service.GetPricingExceptionRequestAsync(created.Id, manager));
         Assert.Null(revised.ReviewerId);
     }
 
@@ -226,14 +226,14 @@ public sealed class PricingExceptionServiceTests : IDisposable
         var service = scope.ServiceProvider.GetRequiredService<IPricingExceptionService>();
         var discounts = scope.ServiceProvider.GetRequiredService<IApprovedDiscountService>();
         var application = Guid.NewGuid();
-        var created = await service.CreateAsync(application, 50, "Competitive offer", reviewer, manager, "create");
+        var created = await service.CreatePricingExceptionRequestAsync(application, 50, "Competitive offer", reviewer, manager, "create");
         var pendingDiscount = await discounts.GetAsync(application, mortgageProcess);
-        var approved = await service.ReviewAsync(created.Id, DecisionOutcome.Approved, "Accepted",
+        var approved = await service.ReviewPricingExceptionRequestAsync(created.Id, DecisionOutcome.Approved, "Accepted",
             1, 1, reviewer, "approve");
         var discount = await discounts.GetAsync(application, mortgageProcess);
 
         // Act
-        var revised = await service.SubmitRevisionAsync(created.Id, 60, "Updated offer",
+        var revised = await service.SubmitRequestRevisionAsync(created.Id, 60, "Updated offer",
             approved.Version, 1, manager, "revise");
 
         // Assert
@@ -252,7 +252,7 @@ public sealed class PricingExceptionServiceTests : IDisposable
     }
 
     // 7. Revision Submission and Review
-    // SubmitRevisionAsync saves and submits the new revision in one operation.
+    // SubmitRequestRevisionAsync saves and submits the new revision in one operation.
 
     [Fact]
     public async Task SubmittingRevisionMakesItAvailableForReview()
@@ -263,10 +263,10 @@ public sealed class PricingExceptionServiceTests : IDisposable
         var created = await CreateRequestAsync(service);
 
         // Act
-        var revised = await service.SubmitRevisionAsync(created.Id, 65, "Updated offer", 1, 1, manager, "revise");
+        var revised = await service.SubmitRequestRevisionAsync(created.Id, 65, "Updated offer", 1, 1, manager, "revise");
 
         // Assert
-        var availableForReview = Assert.Single(await service.ListAsync(reviewer));
+        var availableForReview = Assert.Single(await service.ListPricingExceptionRequestsAsync(reviewer));
         Assert.Equal(revised, availableForReview);
         Assert.Equal(RequestStatus.Pending, availableForReview.Status);
         Assert.Equal(2, availableForReview.RevisionNumber);
@@ -283,19 +283,19 @@ public sealed class PricingExceptionServiceTests : IDisposable
         using var scope = provider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<IPricingExceptionService>();
         var application = Guid.NewGuid();
-        var created = await service.CreateAsync(application, 50, "Offer", reviewer, manager, "create");
-        await service.ReviewAsync(created.Id, DecisionOutcome.Approved, null, 1, 1, reviewer, "approve-original");
-        var revised = await service.SubmitRevisionAsync(created.Id, 75, "Updated offer", 2, 1, manager, "revise");
+        var created = await service.CreatePricingExceptionRequestAsync(application, 50, "Offer", reviewer, manager, "create");
+        await service.ReviewPricingExceptionRequestAsync(created.Id, DecisionOutcome.Approved, null, 1, 1, reviewer, "approve-original");
+        var revised = await service.SubmitRequestRevisionAsync(created.Id, 75, "Updated offer", 2, 1, manager, "revise");
 
         // Act
-        var reviewed = await service.ReviewAsync(created.Id, outcome, "Revised request reviewed", revised.Version, revised.RevisionNumber, reviewer, "review-revision");
+        var reviewed = await service.ReviewPricingExceptionRequestAsync(created.Id, outcome, "Revised request reviewed", revised.Version, revised.RevisionNumber, reviewer, "review-revision");
 
         var discount = await scope.ServiceProvider.GetRequiredService<IApprovedDiscountService>().GetAsync(application, mortgageProcess);
 
         // Assert
         Assert.Equal(outcome == DecisionOutcome.Approved ? RequestStatus.Approved : RequestStatus.Declined, reviewed.Status);
         Assert.Equal(reviewer, reviewed.ReviewerId);
-        var decision = (await service.GetDecisionsAsync(created.Id, manager)).Single(x => x.RevisionNumber == 2);
+        var decision = (await service.GetReviewDecisionsAsync(created.Id, manager)).Single(x => x.RevisionNumber == 2);
         Assert.Equal(outcome, decision.Outcome);
         Assert.Equal("Revised request reviewed", decision.ReviewReason);
         Assert.Equal(reviewed.DecidedAtUtc, decision.DecidedAtUtc);
@@ -326,12 +326,12 @@ public sealed class PricingExceptionServiceTests : IDisposable
         (await db.Users.SingleAsync(user => user.Id == manager)).DisplayName = "Renamed Manager";
         (await db.Users.SingleAsync(user => user.Id == reviewer)).DisplayName = "Reviewer at decision time";
         await db.SaveChangesAsync();
-        var decided = await service.ReviewAsync(created.Id, DecisionOutcome.Approved, null, 1, 1, reviewer, "approve");
+        var decided = await service.ReviewPricingExceptionRequestAsync(created.Id, DecisionOutcome.Approved, null, 1, 1, reviewer, "approve");
 
         (await db.Users.SingleAsync(user => user.Id == reviewer)).DisplayName = "Renamed again";
         await db.SaveChangesAsync();
-        var history = await service.GetDecisionsAsync(created.Id, manager);
-        var revised = await service.SubmitRevisionAsync(created.Id, 60, "Updated offer", 2, 1, manager, "revise");
+        var history = await service.GetReviewDecisionsAsync(created.Id, manager);
+        var revised = await service.SubmitRequestRevisionAsync(created.Id, 60, "Updated offer", 2, 1, manager, "revise");
 
         // Assert
         Assert.Equal(manager, created.CreatedByUserId);
@@ -357,18 +357,18 @@ public sealed class PricingExceptionServiceTests : IDisposable
         var createdAt = clock.GetUtcNow();
 
         // Act
-        var created = await service.CreateAsync(Guid.NewGuid(), 50, "Competitive offer", reviewer, manager, "create");
+        var created = await service.CreatePricingExceptionRequestAsync(Guid.NewGuid(), 50, "Competitive offer", reviewer, manager, "create");
         clock.Advance(TimeSpan.FromMinutes(5));
         var approvedAt = clock.GetUtcNow();
-        await service.ReviewAsync(created.Id, DecisionOutcome.Approved, "Accepted", 1, 1, reviewer, "approve");
+        await service.ReviewPricingExceptionRequestAsync(created.Id, DecisionOutcome.Approved, "Accepted", 1, 1, reviewer, "approve");
         clock.Advance(TimeSpan.FromMinutes(5));
         var revisedAt = clock.GetUtcNow();
-        await service.SubmitRevisionAsync(created.Id, 60, "Updated offer", 2, 1, manager, "revise");
+        await service.SubmitRequestRevisionAsync(created.Id, 60, "Updated offer", 2, 1, manager, "revise");
         clock.Advance(TimeSpan.FromMinutes(5));
         var declinedAt = clock.GetUtcNow();
-        await service.ReviewAsync(created.Id, DecisionOutcome.Declined, "Not justified", 3, 2, reviewer, "decline");
+        await service.ReviewPricingExceptionRequestAsync(created.Id, DecisionOutcome.Declined, "Not justified", 3, 2, reviewer, "decline");
 
-        var snapshot = await service.GetHistorySnapshotAsync(created.Id, manager);
+        var snapshot = await service.GetRequestHistorySnapshotAsync(created.Id, manager);
 
         // Assert
         Assert.Equal(new[] { 50, 60 }, snapshot.Revisions.Select(x => x.DiscountBasisPoints));
@@ -393,7 +393,7 @@ public sealed class PricingExceptionServiceTests : IDisposable
         // Arrange
         using var scope = provider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<IPricingExceptionService>();
-        var created = await service.CreateAsync(Guid.NewGuid(), 50, "Original", reviewer, manager, "create");
+        var created = await service.CreatePricingExceptionRequestAsync(Guid.NewGuid(), 50, "Original", reviewer, manager, "create");
         var db = scope.ServiceProvider.GetRequiredService<PricingExceptionsDbContext>();
         var revision = await db.RequestRevisions.SingleAsync(x => x.RequestId == created.Id);
 
@@ -403,7 +403,7 @@ public sealed class PricingExceptionServiceTests : IDisposable
         db.ChangeTracker.Clear();
 
         // Assert
-        Assert.Equal("Original", (await service.GetAsync(created.Id, manager)).Reason);
+        Assert.Equal("Original", (await service.GetPricingExceptionRequestAsync(created.Id, manager)).Reason);
     }
 
     [Theory]
@@ -416,7 +416,7 @@ public sealed class PricingExceptionServiceTests : IDisposable
         using var scope = provider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<IPricingExceptionService>();
         var created = await CreateRequestAsync(service);
-        await service.ReviewAsync(created.Id, DecisionOutcome.Approved, null, 1, 1, reviewer, "approve");
+        await service.ReviewPricingExceptionRequestAsync(created.Id, DecisionOutcome.Approved, null, 1, 1, reviewer, "approve");
         var db = scope.ServiceProvider.GetRequiredService<PricingExceptionsDbContext>();
 
         // Act
@@ -427,7 +427,7 @@ public sealed class PricingExceptionServiceTests : IDisposable
         // Assert
         Assert.Throws<BusinessRuleException>(() => db.SaveChanges());
         db.ChangeTracker.Clear();
-        Assert.Equal(2, (await service.GetHistorySnapshotAsync(created.Id, manager)).Events.Count);
+        Assert.Equal(2, (await service.GetRequestHistorySnapshotAsync(created.Id, manager)).Events.Count);
     }
 
     // 9. Validation and Authorization
@@ -443,7 +443,7 @@ public sealed class PricingExceptionServiceTests : IDisposable
         var service = scope.ServiceProvider.GetRequiredService<IPricingExceptionService>();
 
         // Act and Assert
-        await Assert.ThrowsAsync<BusinessRuleException>(() => service.CreateAsync(Guid.NewGuid(), discount, reason, reviewer, manager, "create"));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => service.CreatePricingExceptionRequestAsync(Guid.NewGuid(), discount, reason, reviewer, manager, "create"));
         var db = scope.ServiceProvider.GetRequiredService<PricingExceptionsDbContext>();
         Assert.Empty(await db.PricingExceptionRequests.ToListAsync());
         Assert.Empty(await db.IdempotencyRecords.ToListAsync());
@@ -469,7 +469,7 @@ public sealed class PricingExceptionServiceTests : IDisposable
 
         // Act and Assert
         await Assert.ThrowsAsync<BusinessRuleException>(() =>
-            service.CreateAsync(Guid.NewGuid(), 50, "Offer", invalid, manager, "create"));
+            service.CreatePricingExceptionRequestAsync(Guid.NewGuid(), 50, "Offer", invalid, manager, "create"));
         var db = scope.ServiceProvider.GetRequiredService<PricingExceptionsDbContext>();
         Assert.Empty(await db.PricingExceptionRequests.ToListAsync());
         Assert.Empty(await db.IdempotencyRecords.ToListAsync());
@@ -484,9 +484,9 @@ public sealed class PricingExceptionServiceTests : IDisposable
         var created = await CreateRequestAsync(service);
 
         // Act and Assert
-        await Assert.ThrowsAsync<ForbiddenException>(() => service.SubmitRevisionAsync(created.Id, 60, "Offer", 1, 1, otherManager, "revise"));
-        Assert.Equal(created, await service.GetAsync(created.Id, manager));
-        Assert.Single(await service.GetHistoryAsync(created.Id, manager));
+        await Assert.ThrowsAsync<ForbiddenException>(() => service.SubmitRequestRevisionAsync(created.Id, 60, "Offer", 1, 1, otherManager, "revise"));
+        Assert.Equal(created, await service.GetPricingExceptionRequestAsync(created.Id, manager));
+        Assert.Single(await service.GetRequestHistoryAsync(created.Id, manager));
     }
 
     [Fact]
@@ -498,9 +498,9 @@ public sealed class PricingExceptionServiceTests : IDisposable
         var created = await CreateRequestAsync(service);
 
         // Act and Assert
-        await Assert.ThrowsAsync<ForbiddenException>(() => service.ReviewAsync(created.Id, DecisionOutcome.Approved, null, 1, 1, manager, "review"));
-        Assert.Equal(created, await service.GetAsync(created.Id, manager));
-        Assert.Single(await service.GetHistoryAsync(created.Id, manager));
+        await Assert.ThrowsAsync<ForbiddenException>(() => service.ReviewPricingExceptionRequestAsync(created.Id, DecisionOutcome.Approved, null, 1, 1, manager, "review"));
+        Assert.Equal(created, await service.GetPricingExceptionRequestAsync(created.Id, manager));
+        Assert.Single(await service.GetRequestHistoryAsync(created.Id, manager));
     }
 
     [Theory]
@@ -516,13 +516,13 @@ public sealed class PricingExceptionServiceTests : IDisposable
         await db.SaveChangesAsync();
         var service = scope.ServiceProvider.GetRequiredService<IPricingExceptionService>();
         var application = Guid.NewGuid();
-        var created = await service.CreateAsync(application, 50, "Offer", reviewer, manager, "create");
+        var created = await service.CreatePricingExceptionRequestAsync(application, 50, "Offer", reviewer, manager, "create");
 
         // Act and Assert
         await Assert.ThrowsAsync<ForbiddenException>(() =>
-            service.ReviewAsync(created.Id, outcome, "Decision", 1, 1, alternate, "wrong-reviewer"));
-        Assert.Single((await service.GetHistorySnapshotAsync(created.Id, manager)).Events);
-        Assert.Empty(await service.GetDecisionsAsync(created.Id, manager));
+            service.ReviewPricingExceptionRequestAsync(created.Id, outcome, "Decision", 1, 1, alternate, "wrong-reviewer"));
+        Assert.Single((await service.GetRequestHistorySnapshotAsync(created.Id, manager)).Events);
+        Assert.Empty(await service.GetReviewDecisionsAsync(created.Id, manager));
     }
 
     [Fact]
@@ -538,7 +538,7 @@ public sealed class PricingExceptionServiceTests : IDisposable
         await db.SaveChangesAsync();
 
         // Act and Assert
-        await Assert.ThrowsAsync<ForbiddenException>(() => service.ReviewAsync(created.Id, DecisionOutcome.Approved, null, 1, 1, manager, "self-review"));
+        await Assert.ThrowsAsync<ForbiddenException>(() => service.ReviewPricingExceptionRequestAsync(created.Id, DecisionOutcome.Approved, null, 1, 1, manager, "self-review"));
     }
 
     [Fact]
@@ -550,8 +550,8 @@ public sealed class PricingExceptionServiceTests : IDisposable
         var created = await CreateRequestAsync(service);
 
         // Act and Assert
-        await Assert.ThrowsAsync<ForbiddenException>(() => service.GetAsync(created.Id, Guid.NewGuid()));
-        Assert.Single(await service.GetHistoryAsync(created.Id, manager));
+        await Assert.ThrowsAsync<ForbiddenException>(() => service.GetPricingExceptionRequestAsync(created.Id, Guid.NewGuid()));
+        Assert.Single(await service.GetRequestHistoryAsync(created.Id, manager));
     }
 
     [Fact]
@@ -562,7 +562,7 @@ public sealed class PricingExceptionServiceTests : IDisposable
         var service = scope.ServiceProvider.GetRequiredService<IPricingExceptionService>();
 
         // Act and Assert
-        await Assert.ThrowsAsync<NotFoundException>(() => service.GetAsync(Guid.NewGuid(), manager));
+        await Assert.ThrowsAsync<NotFoundException>(() => service.GetPricingExceptionRequestAsync(Guid.NewGuid(), manager));
     }
 
     [Theory]
@@ -576,9 +576,9 @@ public sealed class PricingExceptionServiceTests : IDisposable
         var created = await CreateRequestAsync(service);
 
         // Act and Assert
-        await Assert.ThrowsAsync<ConflictException>(() => service.ReviewAsync(created.Id, DecisionOutcome.Approved, null, version, revision, reviewer, "stale"));
-        Assert.Equal(created, await service.GetAsync(created.Id, manager));
-        Assert.Single(await service.GetHistoryAsync(created.Id, manager));
+        await Assert.ThrowsAsync<ConflictException>(() => service.ReviewPricingExceptionRequestAsync(created.Id, DecisionOutcome.Approved, null, version, revision, reviewer, "stale"));
+        Assert.Equal(created, await service.GetPricingExceptionRequestAsync(created.Id, manager));
+        Assert.Single(await service.GetRequestHistoryAsync(created.Id, manager));
     }
 
     [Theory]
@@ -592,11 +592,11 @@ public sealed class PricingExceptionServiceTests : IDisposable
         var created = await CreateRequestAsync(service);
 
         // Act and Assert
-        await Assert.ThrowsAsync<ConflictException>(() => service.SubmitRevisionAsync(created.Id, 60, "Updated offer", version, revision, manager, "stale"));
+        await Assert.ThrowsAsync<ConflictException>(() => service.SubmitRequestRevisionAsync(created.Id, 60, "Updated offer", version, revision, manager, "stale"));
 
-        Assert.Equal(created, await service.GetAsync(created.Id, manager));
-        Assert.Single(await service.GetHistoryAsync(created.Id, manager));
-        Assert.Single(await service.GetRevisionsAsync(created.Id, manager));
+        Assert.Equal(created, await service.GetPricingExceptionRequestAsync(created.Id, manager));
+        Assert.Single(await service.GetRequestHistoryAsync(created.Id, manager));
+        Assert.Single(await service.GetRequestRevisionsAsync(created.Id, manager));
     }
 
     // 10. Duplicate Prevention and Idempotency
@@ -608,10 +608,10 @@ public sealed class PricingExceptionServiceTests : IDisposable
         using var scope = provider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<IPricingExceptionService>();
         var application = Guid.NewGuid();
-        await service.CreateAsync(application, 50, "Offer", reviewer, manager, "create");
+        await service.CreatePricingExceptionRequestAsync(application, 50, "Offer", reviewer, manager, "create");
 
         // Act and Assert
-        await Assert.ThrowsAsync<ConflictException>(() => service.CreateAsync(application, 50, "Offer", reviewer, manager, "different-key"));
+        await Assert.ThrowsAsync<ConflictException>(() => service.CreatePricingExceptionRequestAsync(application, 50, "Offer", reviewer, manager, "different-key"));
         Assert.Single(await scope.ServiceProvider.GetRequiredService<PricingExceptionsDbContext>().PricingExceptionRequests.ToListAsync());
     }
 
@@ -622,10 +622,10 @@ public sealed class PricingExceptionServiceTests : IDisposable
         using var scope = provider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<IPricingExceptionService>();
         var application = Guid.NewGuid();
-        var created = await service.CreateAsync(application, 50, "Offer", reviewer, manager, "create");
+        var created = await service.CreatePricingExceptionRequestAsync(application, 50, "Offer", reviewer, manager, "create");
 
         // Act and Assert
-        Assert.Equal(created, await service.CreateAsync(application, 50, "Offer", reviewer, manager, "create"));
+        Assert.Equal(created, await service.CreatePricingExceptionRequestAsync(application, 50, "Offer", reviewer, manager, "create"));
         var db = scope.ServiceProvider.GetRequiredService<PricingExceptionsDbContext>();
         Assert.Single(await db.PricingExceptionRequests.ToListAsync());
         Assert.Single(await db.HistoryEntries.ToListAsync());
@@ -639,12 +639,12 @@ public sealed class PricingExceptionServiceTests : IDisposable
         using var scope = provider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<IPricingExceptionService>();
         var application = Guid.NewGuid();
-        var created = await service.CreateAsync(application, 50, "Offer", reviewer, manager, "create");
-        var reviewed = await service.ReviewAsync(created.Id, DecisionOutcome.Approved, null, 1, 1, reviewer, "review");
+        var created = await service.CreatePricingExceptionRequestAsync(application, 50, "Offer", reviewer, manager, "create");
+        var reviewed = await service.ReviewPricingExceptionRequestAsync(created.Id, DecisionOutcome.Approved, null, 1, 1, reviewer, "review");
 
         // Act and Assert
-        Assert.Equal(created, await service.CreateAsync(application, 50, "Offer", reviewer, manager, "create"));
-        Assert.Equal(reviewed, await service.GetAsync(created.Id, manager));
+        Assert.Equal(created, await service.CreatePricingExceptionRequestAsync(application, 50, "Offer", reviewer, manager, "create"));
+        Assert.Equal(reviewed, await service.GetPricingExceptionRequestAsync(created.Id, manager));
         var db = scope.ServiceProvider.GetRequiredService<PricingExceptionsDbContext>();
         Assert.Equal(1, await db.PricingExceptionRequests.CountAsync());
         Assert.Equal(2, await db.HistoryEntries.CountAsync());
@@ -658,12 +658,12 @@ public sealed class PricingExceptionServiceTests : IDisposable
         using var scope = provider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<IPricingExceptionService>();
         var created = await CreateRequestAsync(service);
-        var reviewed = await service.ReviewAsync(created.Id, DecisionOutcome.Approved, null, 1, 1, reviewer, "review");
+        var reviewed = await service.ReviewPricingExceptionRequestAsync(created.Id, DecisionOutcome.Approved, null, 1, 1, reviewer, "review");
 
         // Act and Assert
-        Assert.Equal(reviewed, await service.ReviewAsync(created.Id, DecisionOutcome.Approved, null, 1, 1, reviewer, "review"));
-        Assert.Single(await service.GetDecisionsAsync(created.Id, manager));
-        Assert.Equal(2, (await service.GetHistoryAsync(created.Id, manager)).Count);
+        Assert.Equal(reviewed, await service.ReviewPricingExceptionRequestAsync(created.Id, DecisionOutcome.Approved, null, 1, 1, reviewer, "review"));
+        Assert.Single(await service.GetReviewDecisionsAsync(created.Id, manager));
+        Assert.Equal(2, (await service.GetRequestHistoryAsync(created.Id, manager)).Count);
         Assert.Equal(2, await scope.ServiceProvider.GetRequiredService<PricingExceptionsDbContext>().IdempotencyRecords.CountAsync());
     }
 
@@ -674,16 +674,16 @@ public sealed class PricingExceptionServiceTests : IDisposable
         using var scope = provider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<IPricingExceptionService>();
         var created = await CreateRequestAsync(service);
-        var revised = await service.SubmitRevisionAsync(created.Id, 60, "Updated offer", 1, 1, manager, "revise");
+        var revised = await service.SubmitRequestRevisionAsync(created.Id, 60, "Updated offer", 1, 1, manager, "revise");
 
         // Act
-        var retried = await service.SubmitRevisionAsync(created.Id, 60, "Updated offer", 1, 1, manager, "revise");
+        var retried = await service.SubmitRequestRevisionAsync(created.Id, 60, "Updated offer", 1, 1, manager, "revise");
 
         // Assert
         Assert.Equal(revised, retried);
-        Assert.Equal(revised, await service.GetAsync(created.Id, manager));
-        Assert.Equal(2, (await service.GetRevisionsAsync(created.Id, manager)).Count);
-        Assert.Equal(2, (await service.GetHistoryAsync(created.Id, manager)).Count);
+        Assert.Equal(revised, await service.GetPricingExceptionRequestAsync(created.Id, manager));
+        Assert.Equal(2, (await service.GetRequestRevisionsAsync(created.Id, manager)).Count);
+        Assert.Equal(2, (await service.GetRequestHistoryAsync(created.Id, manager)).Count);
         Assert.Equal(2, await scope.ServiceProvider.GetRequiredService<PricingExceptionsDbContext>().IdempotencyRecords.CountAsync());
     }
 
@@ -694,12 +694,12 @@ public sealed class PricingExceptionServiceTests : IDisposable
         using var scope = provider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<IPricingExceptionService>();
         var created = await CreateRequestAsync(service);
-        var revised = await service.SubmitRevisionAsync(created.Id, 60, "Changed", 1, 1, manager, "revise");
-        await service.ReviewAsync(created.Id, DecisionOutcome.Approved, null, 2, 2, reviewer, "approve");
+        var revised = await service.SubmitRequestRevisionAsync(created.Id, 60, "Changed", 1, 1, manager, "revise");
+        await service.ReviewPricingExceptionRequestAsync(created.Id, DecisionOutcome.Approved, null, 2, 2, reviewer, "approve");
 
         // Act and Assert
-        Assert.Equal(revised, await service.SubmitRevisionAsync(created.Id, 60, "Changed", 1, 1, manager, "revise"));
-        Assert.Equal(3, (await service.GetHistorySnapshotAsync(created.Id, manager)).Events.Count);
+        Assert.Equal(revised, await service.SubmitRequestRevisionAsync(created.Id, 60, "Changed", 1, 1, manager, "revise"));
+        Assert.Equal(3, (await service.GetRequestHistorySnapshotAsync(created.Id, manager)).Events.Count);
     }
 
     [Fact]
@@ -709,12 +709,12 @@ public sealed class PricingExceptionServiceTests : IDisposable
         using var scope = provider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<IPricingExceptionService>();
         var application = Guid.NewGuid();
-        var created = await service.CreateAsync(application, 50, "Offer", reviewer, manager, "create");
-        var approved = await service.ReviewAsync(created.Id, DecisionOutcome.Approved, null, 1, 1, reviewer, "review");
+        var created = await service.CreatePricingExceptionRequestAsync(application, 50, "Offer", reviewer, manager, "create");
+        var approved = await service.ReviewPricingExceptionRequestAsync(created.Id, DecisionOutcome.Approved, null, 1, 1, reviewer, "review");
 
         // Act and Assert
-        await Assert.ThrowsAsync<ConflictException>(() => service.CreateAsync(application, 60, "Offer", reviewer, manager, "create"));
-        Assert.Equal(approved, await service.GetAsync(created.Id, manager));
+        await Assert.ThrowsAsync<ConflictException>(() => service.CreatePricingExceptionRequestAsync(application, 60, "Offer", reviewer, manager, "create"));
+        Assert.Equal(approved, await service.GetPricingExceptionRequestAsync(created.Id, manager));
         var db = scope.ServiceProvider.GetRequiredService<PricingExceptionsDbContext>();
         Assert.Single(await db.PricingExceptionRequests.ToListAsync());
         Assert.Equal(2, await db.HistoryEntries.CountAsync());
@@ -732,12 +732,12 @@ public sealed class PricingExceptionServiceTests : IDisposable
         await db.SaveChangesAsync();
         var service = scope.ServiceProvider.GetRequiredService<IPricingExceptionService>();
         var application = Guid.NewGuid();
-        var created = await service.CreateAsync(application, 50, "Offer", reviewer, manager, "create");
+        var created = await service.CreatePricingExceptionRequestAsync(application, 50, "Offer", reviewer, manager, "create");
 
         // Act and Assert
-        await Assert.ThrowsAsync<ConflictException>(() => service.CreateAsync(application, 50, "Offer", alternate, manager, "create"));
-        Assert.Equal(created, await service.GetAsync(created.Id, manager));
-        Assert.Single(await service.GetHistoryAsync(created.Id, manager));
+        await Assert.ThrowsAsync<ConflictException>(() => service.CreatePricingExceptionRequestAsync(application, 50, "Offer", alternate, manager, "create"));
+        Assert.Equal(created, await service.GetPricingExceptionRequestAsync(created.Id, manager));
+        Assert.Single(await service.GetRequestHistoryAsync(created.Id, manager));
     }
 
     [Fact]
@@ -747,14 +747,14 @@ public sealed class PricingExceptionServiceTests : IDisposable
         using var scope = provider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<IPricingExceptionService>();
         var created = await CreateRequestAsync(service);
-        var approved = await service.ReviewAsync(created.Id, DecisionOutcome.Approved, "Accepted", 1, 1, reviewer, "review");
+        var approved = await service.ReviewPricingExceptionRequestAsync(created.Id, DecisionOutcome.Approved, "Accepted", 1, 1, reviewer, "review");
 
         // Act and Assert
-        await Assert.ThrowsAsync<ConflictException>(() => service.ReviewAsync(created.Id, DecisionOutcome.Declined, "Accepted", 1, 1, reviewer, "review"));
+        await Assert.ThrowsAsync<ConflictException>(() => service.ReviewPricingExceptionRequestAsync(created.Id, DecisionOutcome.Declined, "Accepted", 1, 1, reviewer, "review"));
 
-        Assert.Equal(approved, await service.GetAsync(created.Id, manager));
-        Assert.Single(await service.GetDecisionsAsync(created.Id, manager));
-        Assert.Equal(2, (await service.GetHistoryAsync(created.Id, manager)).Count);
+        Assert.Equal(approved, await service.GetPricingExceptionRequestAsync(created.Id, manager));
+        Assert.Single(await service.GetReviewDecisionsAsync(created.Id, manager));
+        Assert.Equal(2, (await service.GetRequestHistoryAsync(created.Id, manager)).Count);
     }
 
     [Fact]
@@ -764,14 +764,14 @@ public sealed class PricingExceptionServiceTests : IDisposable
         using var scope = provider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<IPricingExceptionService>();
         var created = await CreateRequestAsync(service);
-        var revised = await service.SubmitRevisionAsync(created.Id, 60, "Updated offer", 1, 1, manager, "revise");
+        var revised = await service.SubmitRequestRevisionAsync(created.Id, 60, "Updated offer", 1, 1, manager, "revise");
 
         // Act and Assert
-        await Assert.ThrowsAsync<ConflictException>(() => service.SubmitRevisionAsync(created.Id, 70, "Updated offer", 1, 1, manager, "revise"));
+        await Assert.ThrowsAsync<ConflictException>(() => service.SubmitRequestRevisionAsync(created.Id, 70, "Updated offer", 1, 1, manager, "revise"));
 
-        Assert.Equal(revised, await service.GetAsync(created.Id, manager));
-        Assert.Equal(2, (await service.GetRevisionsAsync(created.Id, manager)).Count);
-        Assert.Equal(2, (await service.GetHistoryAsync(created.Id, manager)).Count);
+        Assert.Equal(revised, await service.GetPricingExceptionRequestAsync(created.Id, manager));
+        Assert.Equal(2, (await service.GetRequestRevisionsAsync(created.Id, manager)).Count);
+        Assert.Equal(2, (await service.GetRequestHistoryAsync(created.Id, manager)).Count);
     }
 
     [Theory]
@@ -783,12 +783,12 @@ public sealed class PricingExceptionServiceTests : IDisposable
         using var scope = provider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<IPricingExceptionService>();
         var created = await CreateRequestAsync(service);
-        var decided = await service.ReviewAsync(created.Id, outcome, "Decision", 1, 1, reviewer, "first");
+        var decided = await service.ReviewPricingExceptionRequestAsync(created.Id, outcome, "Decision", 1, 1, reviewer, "first");
 
         // Act and Assert
-        await Assert.ThrowsAsync<ConflictException>(() => service.ReviewAsync(created.Id, DecisionOutcome.Approved, null, 2, 1, reviewer, "again"));
-        Assert.Equal(decided, await service.GetAsync(created.Id, manager));
-        Assert.Single(await service.GetDecisionsAsync(created.Id, manager));
+        await Assert.ThrowsAsync<ConflictException>(() => service.ReviewPricingExceptionRequestAsync(created.Id, DecisionOutcome.Approved, null, 2, 1, reviewer, "again"));
+        Assert.Equal(decided, await service.GetPricingExceptionRequestAsync(created.Id, manager));
+        Assert.Single(await service.GetReviewDecisionsAsync(created.Id, manager));
     }
 
     // 11. Concurrency and Reliability
@@ -802,7 +802,7 @@ public sealed class PricingExceptionServiceTests : IDisposable
         {
             using var scope = provider.CreateScope();
             return await scope.ServiceProvider.GetRequiredService<IPricingExceptionService>()
-                .CreateAsync(applicationId, 50, "Offer", reviewer, manager, "same-key");
+                .CreatePricingExceptionRequestAsync(applicationId, 50, "Offer", reviewer, manager, "same-key");
         }
 
         // Act
@@ -830,7 +830,7 @@ public sealed class PricingExceptionServiceTests : IDisposable
             try
             {
                 await decisionScope.ServiceProvider.GetRequiredService<IPricingExceptionService>()
-                    .ReviewAsync(created.Id, outcome, null, 1, 1, reviewer, outcome.ToString());
+                    .ReviewPricingExceptionRequestAsync(created.Id, outcome, null, 1, 1, reviewer, outcome.ToString());
                 return true;
             }
             catch (ConflictException) { return false; }
@@ -843,11 +843,11 @@ public sealed class PricingExceptionServiceTests : IDisposable
 
         // Assert
         Assert.Single(outcomes, x => x);
-        var decision = Assert.Single(await service.GetDecisionsAsync(created.Id, manager));
-        var current = await service.GetAsync(created.Id, manager);
+        var decision = Assert.Single(await service.GetReviewDecisionsAsync(created.Id, manager));
+        var current = await service.GetPricingExceptionRequestAsync(created.Id, manager);
         Assert.Equal(decision.Outcome == DecisionOutcome.Approved ? RequestStatus.Approved : RequestStatus.Declined, current.Status);
         Assert.Equal(2, current.Version);
-        Assert.Equal(2, (await service.GetHistoryAsync(created.Id, manager)).Count);
+        Assert.Equal(2, (await service.GetRequestHistoryAsync(created.Id, manager)).Count);
     }
 
     [Fact]
@@ -864,9 +864,9 @@ public sealed class PricingExceptionServiceTests : IDisposable
             try
             {
                 if (revise)
-                    await workflow.SubmitRevisionAsync(created.Id, 60, "New offer", 1, 1, manager, "revise");
+                    await workflow.SubmitRequestRevisionAsync(created.Id, 60, "New offer", 1, 1, manager, "revise");
                 else
-                    await workflow.ReviewAsync(created.Id, DecisionOutcome.Approved, null, 1, 1, reviewer, "approve");
+                    await workflow.ReviewPricingExceptionRequestAsync(created.Id, DecisionOutcome.Approved, null, 1, 1, reviewer, "approve");
                 return true;
             }
             catch (ConflictException) { return false; }
@@ -877,10 +877,10 @@ public sealed class PricingExceptionServiceTests : IDisposable
 
         // Assert
         Assert.Single(outcomes, x => x);
-        var snapshot = await service.GetHistorySnapshotAsync(created.Id, manager);
+        var snapshot = await service.GetRequestHistorySnapshotAsync(created.Id, manager);
         Assert.Equal(2, snapshot.Events.Count);
         Assert.Equal(2, snapshot.Revisions.Count + snapshot.Decisions.Count);
-        Assert.Equal(2, (await service.GetAsync(created.Id, manager)).Version);
+        Assert.Equal(2, (await service.GetPricingExceptionRequestAsync(created.Id, manager)).Version);
     }
 
     [Fact]
@@ -897,14 +897,14 @@ public sealed class PricingExceptionServiceTests : IDisposable
 
         // Act and Assert
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            reader.GetHistorySnapshotAsync(created.Id, manager, cancellation.Token));
+            reader.GetRequestHistorySnapshotAsync(created.Id, manager, cancellation.Token));
         // Cancellation must not leave the shared gate locked.
-        Assert.Single((await reader.GetHistorySnapshotAsync(created.Id, manager).WaitAsync(TimeSpan.FromSeconds(10))).Events);
+        Assert.Single((await reader.GetRequestHistorySnapshotAsync(created.Id, manager).WaitAsync(TimeSpan.FromSeconds(10))).Events);
     }
 
     // Default valid submission for scenarios that do not vary the original request data.
     private Task<PricingExceptionResult> CreateRequestAsync(IPricingExceptionService service)
-        => service.CreateAsync(Guid.NewGuid(), 50, "Offer", reviewer, manager, "create");
+        => service.CreatePricingExceptionRequestAsync(Guid.NewGuid(), 50, "Offer", reviewer, manager, "create");
 
     private sealed class TestClock : TimeProvider
     {

@@ -21,7 +21,7 @@ public sealed class PricingExceptionsController(IPricingExceptionService service
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<PricingExceptionResponseDto>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<PricingExceptionResponseDto>>> List(CancellationToken cancellationToken)
-        => Ok((await service.ListAsync(ActorId, cancellationToken)).Select(PricingExceptionMapper.ToResponse).ToList());
+        => Ok((await service.ListPricingExceptionRequestsAsync(ActorId, cancellationToken)).Select(PricingExceptionMapper.ToResponse).ToList());
 
     [HttpPost]
     [Authorize(Roles = "RelationshipManager")]
@@ -33,7 +33,7 @@ public sealed class PricingExceptionsController(IPricingExceptionService service
         [FromHeader(Name = "Idempotency-Key")] string idempotencyKey,
         CancellationToken cancellationToken)
     {
-        var result = await service.CreateAsync(request.MortgageApplicationId, request.DiscountBps,
+        var result = await service.CreatePricingExceptionRequestAsync(request.MortgageApplicationId, request.DiscountBps,
             request.Reason, request.ReviewerId!.Value, ActorId, idempotencyKey, cancellationToken);
         // Include a Location header pointing to the newly created request's GET endpoint.
         return CreatedAtAction(nameof(Get), new { id = result.Id }, PricingExceptionMapper.ToResponse(result));
@@ -44,7 +44,7 @@ public sealed class PricingExceptionsController(IPricingExceptionService service
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<PricingExceptionResponseDto>> Get(Guid id, CancellationToken cancellationToken)
     {
-        var result = await service.GetAsync(id, ActorId, cancellationToken);
+        var result = await service.GetPricingExceptionRequestAsync(id, ActorId, cancellationToken);
         return Ok(PricingExceptionMapper.ToResponse(result));
     }
 
@@ -59,7 +59,7 @@ public sealed class PricingExceptionsController(IPricingExceptionService service
         [FromHeader(Name = "Idempotency-Key")] string idempotencyKey,
         CancellationToken cancellationToken)
     {
-        var result = await service.SubmitRevisionAsync(id, request.DiscountBps, request.Reason,
+        var result = await service.SubmitRequestRevisionAsync(id, request.DiscountBps, request.Reason,
             request.ExpectedVersion, request.ExpectedRevisionNumber, ActorId, idempotencyKey, cancellationToken);
         return CreatedAtAction(nameof(Get), new { id }, PricingExceptionMapper.ToResponse(result));
     }
@@ -75,7 +75,7 @@ public sealed class PricingExceptionsController(IPricingExceptionService service
         [FromHeader(Name = "Idempotency-Key")] string idempotencyKey,
         CancellationToken cancellationToken)
     {
-        var result = await service.ReviewAsync(id, request.Outcome!.Value,
+        var result = await service.ReviewPricingExceptionRequestAsync(id, request.Outcome!.Value,
             request.Reason, request.ExpectedVersion, request.ReviewedRevisionNumber,
             ActorId, idempotencyKey, cancellationToken);
         return Ok(PricingExceptionMapper.ToResponse(result));
@@ -86,7 +86,7 @@ public sealed class PricingExceptionsController(IPricingExceptionService service
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<HistoryResponseDto>> History(Guid id, CancellationToken cancellationToken)
     {
-        var snapshot = await service.GetHistorySnapshotAsync(id, ActorId, cancellationToken);
+        var snapshot = await service.GetRequestHistorySnapshotAsync(id, ActorId, cancellationToken);
         return Ok(HistoryMapper.ToResponse(snapshot));
     }
 }
