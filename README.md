@@ -126,21 +126,16 @@ Integrate trusted sign-in and mortgage application validation, confirm the busin
 | Business assumptions and scope | [Design document: assumptions and scope](Deliverables_documents/Blue_Harvest_Mortgage_Pricing_Exception_Design.pdf) |
 | Sequence diagrams and explanations | [Sequence diagrams PDF](Deliverables_documents/BlueHarvest_Current_Sequence_Diagrams.pdf) |
 | Entity relationships and data model | [Entity diagram PDF](Deliverables_documents/BlueHarvest_Current_Entity_Relationships.pdf) |
-| Local execution | [Local execution guide](Deliverables_documents/Blue_Harvest_Local_Execution_Guide_Approved.pdf) |
-| Test execution and validation | [Testing and validation guide](Deliverables_documents/Testing_and_Validation.pdf) |
+| Local execution | [Local execution guide PDF](Deliverables_documents/Blue_Harvest_Local_Execution_Guide_Approved.pdf) |
+| Test execution and validation | [Testing and validation PDF](Deliverables_documents/Testing_and_Validation.pdf) |
 | AI-assisted development | [AI-assisted development PDF](Deliverables_documents/AI_Assisted_Development.pdf) |
 | AI agent enhancement demonstration | [Enhancement demonstration PDF](Deliverables_documents/AI_Agent_Enhancement_Demonstration.pdf) |
-| Engineering decisions and operational guidance | [Engineering and operations guide](Deliverables_documents/Engineering_Decisions_and_Operational_Guidance.pdf) |
+| Engineering decisions and operational guidance | [Engineering and operational guidance PDF](Deliverables_documents/Engineering_Decisions_and_Operational_Guidance.pdf) |
 | Production readiness | [Production readiness PDF](Deliverables_documents/Production_Readiness.pdf) |
 
 AI-assisted tools supported development, tests and documentation; they do not make mortgage approval decisions.
 
-## 10. Development Time
-
-Actual development time: **25 hours**, completed over **5 days at 5 hours per day**.
-
-
-## 10. Development Time
+## 10. Development Time 
 
 **Estimated development effort:** Approximately 38 hours across November 3–8, 2026.
 
