@@ -122,14 +122,16 @@ Integrate trusted sign-in and mortgage application validation, confirm the busin
 
 | Document | Location |
 | --- | --- |
-| Architecture and detailed design | [Word design document](Deliverables_documents/Blue_Harvest_Mortgage_Pricing_Exception_Design.docx) |
-| Business assumptions and scope | [Design document: assumptions and scope](Deliverables_documents/Blue_Harvest_Mortgage_Pricing_Exception_Design.docx) |
+| Architecture and detailed design | [Design document PDF](Deliverables_documents/Blue_Harvest_Mortgage_Pricing_Exception_Design.pdf) |
+| Business assumptions and scope | [Design document: assumptions and scope](Deliverables_documents/Blue_Harvest_Mortgage_Pricing_Exception_Design.pdf) |
 | Sequence diagrams and explanations | [Sequence diagrams PDF](Deliverables_documents/BlueHarvest_Current_Sequence_Diagrams.pdf) |
 | Entity relationships and data model | [Entity diagram PDF](Deliverables_documents/BlueHarvest_Current_Entity_Relationships.pdf) |
-| Local execution | [Local execution guide](Deliverables_documents/Local_Execution_Guide_Final.docx) |
-| Test execution and validation | [Backend test guide](Deliverables_documents/Testing_and_Validation.docx), [frontend test guide](Deliverables_documents/Testing_and_Validation.docx), [validation record](Deliverables_documents/Testing_and_Validation_Results.txt) |
-| AI-assisted development | [Development log](Deliverables_documents/AI_Assisted_Development.docx) |
-| Assignment presentation | [PowerPoint](Deliverables_documents/BlueHarvest_Assignment_Presentation.pptx) |
+| Local execution | [Local execution guide](Deliverables_documents/Blue_Harvest_Local_Execution_Guide_Approved.pdf) |
+| Test execution and validation | [Testing and validation guide](Deliverables_documents/Testing_and_Validation.pdf) |
+| AI-assisted development | [AI-assisted development PDF](Deliverables_documents/AI_Assisted_Development.pdf) |
+| AI agent enhancement demonstration | [Enhancement demonstration PDF](Deliverables_documents/AI_Agent_Enhancement_Demonstration.pdf) |
+| Engineering decisions and operational guidance | [Engineering and operations guide](Deliverables_documents/Engineering_Decisions_and_Operational_Guidance.pdf) |
+| Production readiness | [Production readiness PDF](Deliverables_documents/Production_Readiness.pdf) |
 
 AI-assisted tools supported development, tests and documentation; they do not make mortgage approval decisions.
 
