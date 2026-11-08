@@ -1,6 +1,6 @@
 # Blue Harvest Mortgage Pricing Exceptions
 
-An internal application for requesting, reviewing and tracking mortgage interest-rate discounts, developed for the [Blue Harvest engineering assignment](<../Documentation/Blue Harvest Agentic SDLC Engineering Assignment.pdf>).
+An internal application for requesting, reviewing and tracking mortgage interest-rate discounts, developed for the [Blue Harvest engineering assignment](<Blue Harvest Agentic SDLC Engineering Assignment.pdf>).
 
 ## 1. Business Problem
 
@@ -118,18 +118,6 @@ See the testing documents below for execution details and recorded evidence. Tes
 
 Integrate trusted sign-in and mortgage application validation, confirm the business policies, and strengthen database constraints and concurrency for multiple API instances. Establish backup recovery, privacy controls, monitoring and operational ownership.
 
-## 9. Supporting Documentation
-
-| Document | Location |
-| --- | --- |
-| Architecture and detailed design | [Word design document](../Documentation/Architecture/Blue_Harvest_Mortgage_Pricing_Exception_Design.docx) |
-| Business assumptions and scope | [Word assumptions document](../Documentation/Assumptions.docx) |
-| Sequence diagrams and explanations | [Word sequence document](../Documentation/BlueHarvest_Current_Sequence_Diagrams_Final.docx) |
-| Entity relationships and data model | [Word entity document](../Documentation/BlueHarvest_Current_Entity_Relationships_Final.docx) |
-| Local execution | [Word Docker guide](../Documentation/BlueHarvest_Docker_Clear_Instructions.docx) |
-| Test execution and validation | [Backend test guide](../Documentation/Testing/BackendTestingGuide.md), [frontend test guide](../Documentation/Frontend/TESTING.md), [validation record](../Documentation/Architecture/ValidationResults.md) |
-| AI-assisted development | [Development log](../Documentation/Architecture/AiDevelopmentLog.md) |
-| Assignment presentation | [PowerPoint](../Documentation/BlueHarvest_Assignment_Presentation.pptx) |
 
 AI-assisted tools supported development, tests and documentation; they do not make mortgage approval decisions.
 
