@@ -136,3 +136,29 @@ AI-assisted tools supported development, tests and documentation; they do not ma
 ## 10. Development Time
 
 Actual development time: **25 hours**, completed over **5 days at 5 hours per day**.
+
+
+## 10. Development Time
+
+**Estimated development effort:** Approximately 38 hours across November 3–8, 2026.
+
+| Development Activity | Estimated Hours |
+|---|---:|
+| Requirements analysis and solution architecture | 3 |
+| Backend API and business logic implementation | 6 |
+| Backend code review, refactoring, and refinement | 5 |
+| Frontend development and API integration | 4 |
+| Frontend code review and usability improvements | 3 |
+| PostgreSQL integration and Docker configuration | 3 |
+| Automated unit, integration, and browser test development | 4 |
+| Test review, debugging, and workflow validation | 6 |
+| Technical documentation and final review | 4 |
+| **Total Estimated Effort** | **38 hours** |
+
+### AI-Assisted Development and Engineering Validation
+
+*AI-assisted development tools supported implementation, code refactoring, test generation, and technical documentation.
+
+Engineering effort included dedicated reviews of backend business logic, frontend functionality, API integration, database persistence, and automated tests. Generated outputs were evaluated and refined through iterative development and validation.
+
+The Git commit history documents these activities, including implementation, refactoring, testing, Docker integration, and final documentation.
